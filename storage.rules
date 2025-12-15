@@ -1,0 +1,18 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Signatures: Allow a user to write to a path that contains their UID.
+    // Direct reads are restricted to the owner. Notaries get access via secure download URLs from Firestore.
+    match /signatures/{userId}/{fileName} {
+      allow write: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Documents: Same as signatures.
+    match /documents/{userId}/{fileName} {
+      allow write: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}

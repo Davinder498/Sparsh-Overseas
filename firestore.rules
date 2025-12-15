@@ -1,0 +1,67 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper Functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    function isNotary() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'NOTARY';
+    }
+    function isPensioner() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'PENSIONER';
+    }
+    
+    // Users Collection
+    match /users/{userId} {
+      // Allow any signed-in user to read profiles (e.g. Notary needs to see Pensioner names)
+      allow read: if isSignedIn();
+      // Allow users to create their own profile upon signup, and update only their own profile
+      allow create, update: if isOwner(userId);
+    }
+    
+    // Applications Collection
+    match /applications/{appId} {
+      // Allow a user to read an application if they are the owner (pensioner) OR if they are a notary
+      allow read: if (isOwner(resource.data.pensionerId) || isNotary());
+      
+      // Allow a pensioner to create an application, but only for themselves, and with valid data
+      allow create: if (
+        isPensioner() && isOwner(request.resource.data.pensionerId)
+        // Server-side Validation
+        && request.resource.data.pensionerName is string && request.resource.data.pensionerName.size() > 0
+        && request.resource.data.ppoNumber is string && request.resource.data.ppoNumber.size() > 0
+        && request.resource.data.dateOfBirth.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && request.resource.data.documents is list
+        && request.resource.data.status == 'SUBMITTED' // Enforce initial status
+      );
+      
+      // Allow updates only under very specific, role-based, state-machine conditions
+      allow update: if (
+        // Case 1: A Notary can attest or reject an application that is in 'SUBMITTED' state.
+        // They can only write to specific notary-related fields.
+        ( isNotary() 
+          && resource.data.status == 'SUBMITTED'
+          && (request.resource.data.status == 'ATTESTED' || request.resource.data.status == 'REJECTED')
+          && request.resource.data.keys().hasOnly([
+              'status', 'notaryId', 'notaryName', 'notarySignature',
+              'attestationDate', 'rejectionReason', 'history'
+            ])
+        ) 
+        ||
+        // Case 2: A Pensioner can send their application to SPARSH, but only if it's 'ATTESTED'.
+        // They can only modify the 'status' and 'history' fields.
+        ( isPensioner() 
+          && isOwner(resource.data.pensionerId) 
+          && resource.data.status == 'ATTESTED'
+          && request.resource.data.status == 'SENT_TO_SPARSH'
+          && request.resource.data.keys().hasOnly(['status', 'history'])
+        )
+      );
+    }
+  }
+}

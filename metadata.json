@@ -1,0 +1,7 @@
+{
+  "name": "Sparsh Overseas",
+  "description": "A secure digital workflow for overseas Defence pensioners to submit Annual Life Certificates with notary attestation.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
