@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { User, UserRole, View, Theme } from './types';
-import { loginUser, registerUser, updateUserProfile, loginWithGoogle, changeUserPassword } from './services/firebaseBackend';
-import { Shield, LogOut, User as UserIcon, FileCheck, Menu, X, Home, Settings, Bell, Lock, Key, Mail, Loader2, Edit2, Save, BarChart3 } from 'lucide-react';
+import { loginUser, registerUser, updateUserProfile, loginWithGoogle, changeUserPassword, exportUserData, deleteUserAccount } from './services/firebaseBackend';
+import { Shield, LogOut, User as UserIcon, FileCheck, Menu, X, Home, Settings, Lock, Key, Mail, Loader2, Edit2, Save, BarChart3, Trash2, DownloadCloud, AlertTriangle, FileText } from 'lucide-react';
 import PensionerDashboard from './views/PensionerDashboard';
 import NotaryDashboard from './views/NotaryDashboard';
 import ThemeToggle from './components/ThemeToggle';
@@ -9,6 +10,9 @@ import HomePage from './views/HomePage';
 import LandingPage from './views/LandingPage';
 import ServiceUnavailablePage from './views/ServiceUnavailablePage';
 import NotaryReports from './views/NotaryReports';
+import PrivacyPolicy from './views/PrivacyPolicy';
+import TermsOfService from './views/TermsOfService';
+import CookieConsent from './components/CookieConsent';
 import { auth } from './services/firebaseConfig';
 import { doc, getDoc } from '@firebase/firestore';
 import { db } from './services/firebaseConfig';
@@ -18,6 +22,8 @@ import UpdateIdForm from './views/UpdateIdForm';
 import RequestDocumentsForm from './views/RequestDocumentsForm';
 import { useNotifier } from './contexts/NotificationContext';
 import { captureError } from './services/errorMonitoringService';
+import NotificationCenter from './components/NotificationCenter';
+import { requestNotificationPermission } from './services/pushNotificationService';
 
 // Extracted DetailItem component to prevent re-rendering issues (focus loss)
 interface DetailItemProps {
@@ -62,6 +68,12 @@ const App: React.FC = () => {
           const userProfile = userDoc.data() as User;
           setCurrentUser(userProfile);
           setCurrentView(userProfile.role === UserRole.PENSIONER ? 'HOME_PAGE' : 'NOTARY_DASHBOARD');
+          
+          // Request notification permissions when user logs in
+          requestNotificationPermission().then(granted => {
+              if(granted) console.log("Notifications enabled");
+          });
+
         } else {
           captureError(new Error("User in auth but not in Firestore"), { userId: firebaseUser.uid });
           await auth.signOut();
@@ -100,6 +112,13 @@ const App: React.FC = () => {
   };
 
   const navigateTo = (view: View, params?: { title: string }) => {
+    // Exception for Legal Pages which can be accessed without login from footer/menu if needed (logic below handles it)
+    if (view === 'PRIVACY_POLICY' || view === 'TERMS_OF_SERVICE') {
+        setCurrentView(view);
+        setIsDrawerOpen(false);
+        return;
+    }
+    
     if (view !== 'LOGIN' && view !== 'LANDING' && !currentUser) {
         return;
     }
@@ -108,10 +127,8 @@ const App: React.FC = () => {
         setUnavailableServiceTitle(params.title);
     }
 
-    const availableViews: View[] = ['LOGIN', 'LANDING', 'HOME_PAGE', 'PENSIONER_DASHBOARD', 'NOTARY_DASHBOARD', 'PERSONAL_DETAIL', 'ACCOUNT_SETTING', 'SERVICE_UNAVAILABLE', 'FAMILY_PENSION', 'UPDATE_EMAIL', 'UPDATE_ID', 'REQUEST_DOCUMENTS', 'NOTARY_REPORTS'];
-    if (availableViews.includes(view)) {
-        setCurrentView(view);
-    }
+    // Extended views
+    setCurrentView(view);
     setIsDrawerOpen(false);
   };
 
@@ -339,6 +356,7 @@ const App: React.FC = () => {
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [exportLoading, setExportLoading] = useState(false);
     const notifier = useNotifier();
 
     const handlePasswordChange = async (e: React.FormEvent) => {
@@ -359,48 +377,109 @@ const App: React.FC = () => {
         }
     };
     
+    const handleExport = async () => {
+        if (!currentUser) return;
+        setExportLoading(true);
+        try {
+            const data = await exportUserData(currentUser.id);
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `sparsh_data_export_${currentUser.id}.json`;
+            link.click();
+            notifier.addToast('Data exported successfully.', 'success');
+        } catch(error: any) {
+            notifier.addToast('Export failed. Please try again.', 'error');
+        } finally {
+            setExportLoading(false);
+        }
+    };
+
+    const handleDeleteAccount = async () => {
+        if(!window.confirm("ARE YOU SURE? This will permanently delete your login and profile. This action cannot be undone.")) return;
+        
+        try {
+            await deleteUserAccount();
+            // Logout happens automatically via auth state change
+            notifier.addToast('Account deleted.', 'info');
+        } catch(error: any) {
+            notifier.addToast('Failed to delete account. You may need to re-login first.', 'error');
+        }
+    };
+    
     if (!currentUser) return null;
-    const isGoogleUser = currentUser.id.startsWith("google:");
+    const isGoogleUser = currentUser.id.startsWith("google:") || (currentUser.avatar && currentUser.avatar.includes('googleusercontent'));
 
     return (
-        <div className="bg-white dark:bg-gray-800 shadow rounded-lg border dark:border-gray-700">
-             <div className="px-4 py-5 sm:px-6 border-b dark:border-gray-700">
-                <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100">Account Settings</h3>
-                <p className="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">Manage your login and security settings.</p>
+        <div className="space-y-6">
+            <div className="bg-white dark:bg-gray-800 shadow rounded-lg border dark:border-gray-700">
+                <div className="px-4 py-5 sm:px-6 border-b dark:border-gray-700">
+                    <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100">Security & Login</h3>
+                    <p className="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">Manage your credentials.</p>
+                </div>
+                <div className="px-4 py-5 sm:p-6 space-y-6">
+                    <div>
+                        <h4 className="text-md font-medium text-gray-800 dark:text-gray-200">Login Email</h4>
+                        <div className="mt-2 flex items-center p-3 bg-gray-50 dark:bg-gray-900/50 rounded-md border dark:border-gray-700">
+                            <Mail className="h-5 w-5 text-gray-400 mr-3"/>
+                            <span className="text-gray-700 dark:text-gray-300">{currentUser.email}</span>
+                            {isGoogleUser && <span className="ml-auto text-xs font-semibold bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300 px-2 py-1 rounded-full">Google Account</span>}
+                        </div>
+                    </div>
+
+                    {!isGoogleUser && (
+                        <form onSubmit={handlePasswordChange} className="space-y-4 pt-6 border-t dark:border-gray-700">
+                            <h4 className="text-md font-medium text-gray-800 dark:text-gray-200">Change Password</h4>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Current Password</label>
+                                <input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} required className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm p-2 bg-white dark:bg-gray-700"/>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">New Password</label>
+                                <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm p-2 bg-white dark:bg-gray-700"/>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Confirm New Password</label>
+                                <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm p-2 bg-white dark:bg-gray-700"/>
+                            </div>
+                            <div className="text-right">
+                                <button type="submit" disabled={isLoading} className="inline-flex justify-center items-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary hover:bg-blue-800 disabled:opacity-50">
+                                    {isLoading ? <Loader2 className="animate-spin h-4 w-4 mr-2"/> : <Key className="h-4 w-4 mr-2"/>}
+                                    Update Password
+                                </button>
+                            </div>
+                        </form>
+                    )}
+                </div>
             </div>
-            <div className="px-4 py-5 sm:p-6 space-y-6">
-                <div>
-                    <h4 className="text-md font-medium text-gray-800 dark:text-gray-200">Login Email</h4>
-                    <div className="mt-2 flex items-center p-3 bg-gray-50 dark:bg-gray-900/50 rounded-md border dark:border-gray-700">
-                        <Mail className="h-5 w-5 text-gray-400 mr-3"/>
-                        <span className="text-gray-700 dark:text-gray-300">{currentUser.email}</span>
-                        {isGoogleUser && <span className="ml-auto text-xs font-semibold bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300 px-2 py-1 rounded-full">Google Account</span>}
+
+            <div className="bg-white dark:bg-gray-800 shadow rounded-lg border border-red-100 dark:border-red-900/30">
+                 <div className="px-4 py-5 sm:px-6 border-b border-red-100 dark:border-red-900/30 bg-red-50 dark:bg-red-900/10 rounded-t-lg">
+                    <h3 className="text-lg leading-6 font-medium text-red-800 dark:text-red-400 flex items-center">
+                        <AlertTriangle className="h-5 w-5 mr-2" /> Data Privacy & Danger Zone
+                    </h3>
+                </div>
+                <div className="px-4 py-5 sm:p-6 space-y-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <h4 className="text-md font-medium text-gray-900 dark:text-gray-100">Export Your Data</h4>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Download a copy of all your personal data and application history (GDPR).</p>
+                        </div>
+                        <button onClick={handleExport} disabled={exportLoading} className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                             {exportLoading ? <Loader2 className="animate-spin h-4 w-4 mr-2"/> : <DownloadCloud className="h-4 w-4 mr-2"/>} Export JSON
+                        </button>
+                    </div>
+                    <div className="border-t border-gray-200 dark:border-gray-700 pt-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                         <div>
+                            <h4 className="text-md font-medium text-red-600 dark:text-red-400">Delete Account</h4>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Permanently remove your account and personal profile from our systems.</p>
+                        </div>
+                        <button onClick={handleDeleteAccount} className="inline-flex items-center px-4 py-2 border border-red-300 dark:border-red-800 shadow-sm text-sm font-medium rounded-md text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40">
+                             <Trash2 className="h-4 w-4 mr-2"/> Delete Account
+                        </button>
                     </div>
                 </div>
-
-                {!isGoogleUser && (
-                    <form onSubmit={handlePasswordChange} className="space-y-4 pt-6 border-t dark:border-gray-700">
-                         <h4 className="text-md font-medium text-gray-800 dark:text-gray-200">Change Password</h4>
-                         <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Current Password</label>
-                            <input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} required className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm p-2 bg-white dark:bg-gray-700"/>
-                         </div>
-                         <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">New Password</label>
-                            <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm p-2 bg-white dark:bg-gray-700"/>
-                         </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Confirm New Password</label>
-                            <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm p-2 bg-white dark:bg-gray-700"/>
-                         </div>
-                          <div className="text-right">
-                            <button type="submit" disabled={isLoading} className="inline-flex justify-center items-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary hover:bg-blue-800 disabled:opacity-50">
-                                {isLoading ? <Loader2 className="animate-spin h-4 w-4 mr-2"/> : <Key className="h-4 w-4 mr-2"/>}
-                                Update Password
-                            </button>
-                          </div>
-                    </form>
-                )}
             </div>
         </div>
     );
@@ -421,6 +500,8 @@ const App: React.FC = () => {
       case 'UPDATE_EMAIL': return currentUser && <UpdateEmailForm user={currentUser} onBack={() => navigateTo('HOME_PAGE')} />;
       case 'UPDATE_ID': return currentUser && <UpdateIdForm user={currentUser} onBack={() => navigateTo('HOME_PAGE')} />;
       case 'REQUEST_DOCUMENTS': return currentUser && <RequestDocumentsForm user={currentUser} onBack={() => navigateTo('HOME_PAGE')} />;
+      case 'PRIVACY_POLICY': return <PrivacyPolicy onBack={() => navigateTo(currentUser ? getHomeView() : 'LANDING')} />;
+      case 'TERMS_OF_SERVICE': return <TermsOfService onBack={() => navigateTo(currentUser ? getHomeView() : 'LANDING')} />;
       default: return null;
     }
   };
@@ -446,8 +527,30 @@ const App: React.FC = () => {
     );
   }
   
+  // Show cookie consent on all screens
+  const cookieBanner = <CookieConsent />;
+
   if (!currentUser) {
-      return renderView();
+      // Allow viewing legal pages even when logged out
+      if (currentView === 'PRIVACY_POLICY' || currentView === 'TERMS_OF_SERVICE') {
+           return (
+             <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
+                {renderView()}
+                {cookieBanner}
+             </div>
+           );
+      }
+      return (
+        <>
+            {renderView()}
+            {cookieBanner}
+            <div className="fixed bottom-0 w-full bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 py-2 flex justify-center space-x-6 text-xs text-gray-400 z-40">
+                <button onClick={() => navigateTo('PRIVACY_POLICY')} className="hover:text-primary">Privacy Policy</button>
+                <span>|</span>
+                <button onClick={() => navigateTo('TERMS_OF_SERVICE')} className="hover:text-primary">Terms of Service</button>
+            </div>
+        </>
+      );
   }
   
   // FIX: Explicitly type nav item arrays to prevent TypeScript from widening the 'view' property to a generic string.
@@ -465,9 +568,15 @@ const App: React.FC = () => {
   ];
   
   const drawerNavItems: { view: View; icon: React.ElementType; label: string }[] = currentUser.role === UserRole.NOTARY ? notaryNavItems : pensionerNavItems;
+  
+  const legalNavItems: { view: View; icon: React.ElementType; label: string }[] = [
+      { view: 'PRIVACY_POLICY', icon: Shield, label: "Privacy Policy" },
+      { view: 'TERMS_OF_SERVICE', icon: FileText, label: "Terms of Service" },
+  ];
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+      {cookieBanner}
       <div className="lg:hidden">
         <div className={`fixed inset-0 flex z-40 ${isDrawerOpen ? '' : 'pointer-events-none'}`}>
           <div className={`fixed inset-0 bg-gray-600 bg-opacity-75 transition-opacity ${isDrawerOpen ? 'opacity-100' : 'opacity-0'}`} onClick={() => setIsDrawerOpen(false)}></div>
@@ -489,6 +598,16 @@ const App: React.FC = () => {
                         {item.label}
                     </button>
                 ))}
+                
+                <div className="pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
+                    <p className="px-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Legal</p>
+                    {legalNavItems.map(item => (
+                        <button key={item.label} onClick={() => navigateTo(item.view)} className={`group flex items-center px-2 py-2 text-base font-medium rounded-md w-full text-left text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700`}>
+                            <item.icon className="mr-4 flex-shrink-0 h-6 w-6 text-gray-400 dark:text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300" />
+                            {item.label}
+                        </button>
+                    ))}
+                </div>
               </nav>
             </div>
              <div className="flex-shrink-0 flex border-t border-gray-200 dark:border-gray-700 p-4">
@@ -519,6 +638,16 @@ const App: React.FC = () => {
                     {item.label}
                 </button>
               ))}
+              
+               <div className="pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
+                    <p className="px-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Legal</p>
+                    {legalNavItems.map(item => (
+                        <button key={item.label} onClick={() => navigateTo(item.view)} className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md w-full text-left text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700`}>
+                            <item.icon className="mr-3 flex-shrink-0 h-6 w-6 text-gray-400 dark:text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300" />
+                            {item.label}
+                        </button>
+                    ))}
+                </div>
             </nav>
           </div>
            <div className="flex-shrink-0 flex border-t border-gray-200 dark:border-gray-700 p-4">
@@ -547,7 +676,7 @@ const App: React.FC = () => {
                     <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{getPageTitle()}</h1>
                 </div>
                 <div className="flex items-center space-x-2">
-                    <button className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"><Bell className="h-5 w-5"/></button>
+                    <NotificationCenter />
                     <ThemeToggle theme={theme} setTheme={setTheme} />
                 </div>
             </div>

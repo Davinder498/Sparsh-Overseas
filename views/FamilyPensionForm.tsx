@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { User } from '../types';
 import { sendGmailWithAttachments, GmailAttachment } from '../services/gmailService';
@@ -59,6 +60,7 @@ export default function FamilyPensionForm({ user, onBack }: Props) {
   const [showSparshModal, setShowSparshModal] = useState(false);
   const [submissionStatus, setSubmissionStatus] = useState<SubmissionStatus>('IDLE');
   const [errorMessage, setErrorMessage] = useState('');
+  const [hasConsented, setHasConsented] = useState(false);
   
   const [activeUploadType, setActiveUploadType] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -96,7 +98,7 @@ export default function FamilyPensionForm({ user, onBack }: Props) {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const isFormReady = DOCUMENT_SLOTS.every(slot => !slot.required || !!documents[slot.id]);
+  const isFormReady = DOCUMENT_SLOTS.every(slot => !slot.required || !!documents[slot.id]) && hasConsented;
 
   const handleAuthorize = async () => {
     setErrorMessage('');
@@ -217,7 +219,7 @@ ${formData.reporterName}
         </div>
       </div>
       
-      <form onSubmit={(e) => { e.preventDefault(); setShowSparshModal(true); }} className="px-4 py-5 sm:p-6 space-y-8">
+      <form onSubmit={(e) => { e.preventDefault(); if(!hasConsented) { notifier.addToast("Please agree to the privacy policy.", "warning"); return; } setShowSparshModal(true); }} className="px-4 py-5 sm:p-6 space-y-8">
         <div className="space-y-4">
             <h4 className="text-base font-bold text-primary uppercase border-b dark:border-gray-700 pb-2 flex items-center"><span className="bg-primary text-white rounded-full w-6 h-6 flex items-center justify-center text-xs mr-2">1</span>Reporter Details</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -276,6 +278,27 @@ ${formData.reporterName}
                     )
                 })}
              </div>
+        </div>
+
+        {/* CONSENT CHECKBOX */}
+        <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-100 dark:border-blue-800">
+            <div className="flex items-start">
+                <div className="flex items-center h-5">
+                    <input
+                        id="privacy-consent"
+                        name="privacy-consent"
+                        type="checkbox"
+                        checked={hasConsented}
+                        onChange={(e) => setHasConsented(e.target.checked)}
+                        className="focus:ring-primary h-4 w-4 text-primary border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700"
+                    />
+                </div>
+                <div className="ml-3 text-sm">
+                    <label htmlFor="privacy-consent" className="font-medium text-gray-700 dark:text-gray-300">
+                        I consent to the collection and processing of my personal data (including sensitive financial information) as described in the Privacy Policy. I verify that I am the legal reporter/Next of Kin.
+                    </label>
+                </div>
+            </div>
         </div>
         
         <div className="pt-5 border-t border-gray-200 dark:border-gray-700 flex flex-col-reverse sm:flex-row sm:justify-end gap-3 sm:gap-0">

@@ -6,6 +6,8 @@ import 'firebase/compat/auth'; // Ensure the auth module is loaded for compat AP
 // Fix: Remove direct named imports for AuthProviders. They are accessed via firebase.auth.
 // import { GoogleAuthProvider, EmailAuthProvider } from 'firebase/compat/auth'; 
 import { ALCApplication, ApplicationStatus, User, UserRole } from '../types';
+import { sendNotification, getStatusMessage } from './pushNotificationService';
+import { logAudit, AuditAction } from './auditService';
 
 // Helper: Convert Base64 Data URI to Blob for robust upload
 const dataURItoBlob = (dataURI: string) => {
@@ -61,6 +63,9 @@ export const registerUser = async (email: string, pass: string, name: string, ro
   // Save profile to Firestore, initializing all fields
   // Fix: Use the v8 compat namespaced firestore API
   await db.collection("users").doc(uid).set(newUser);
+  
+  logAudit(uid, AuditAction.LOGIN, undefined, 'User Registered');
+  
   return newUser;
 };
 
@@ -77,6 +82,9 @@ export const loginUser = async (email: string, pass: string): Promise<User> => {
 
   if (userDoc.exists) {
     const userData = userDoc.data() as User;
+    
+    logAudit(uid, AuditAction.LOGIN, undefined, 'Email Login');
+
     // Fallback: If profile is somehow incomplete, merge with a default structure
     if (!userData.hasOwnProperty('fatherHusbandName')) {
         console.warn("User profile is incomplete. Merging with default structure.");
@@ -137,6 +145,8 @@ export const loginWithGoogle = async (role: UserRole = UserRole.PENSIONER): Prom
 
   const user = result.user!;
   
+  logAudit(user.uid, AuditAction.LOGIN, undefined, 'Google Login');
+
   // Fix: Use the v8 compat namespaced firestore API
   const userDocRef = db.collection("users").doc(user.uid);
   const userDoc = await userDocRef.get();
@@ -195,6 +205,8 @@ export const linkGoogleAccount = async (): Promise<string> => {
         // Use result.credential directly in compat/v8 mode.
         const credential = result.credential as firebase.auth.OAuthCredential;
         const token = credential?.accessToken;
+        
+        logAudit(user.uid, AuditAction.LINK_GOOGLE, undefined, 'Linked Google Account for Email access');
 
         if (token) {
             sessionStorage.setItem('google_access_token', token);
@@ -269,12 +281,52 @@ export const updateUserProfile = async (userId: string, data: Partial<User>): Pr
   await userRef.update(data);
 };
 
+// --- GDPR & Data Export ---
+
+export const exportUserData = async (userId: string): Promise<object> => {
+  logAudit(userId, AuditAction.EXPORT_DATA, undefined, 'User requested data export');
+  
+  const userDoc = await db.collection("users").doc(userId).get();
+  const userData = userDoc.exists ? userDoc.data() : null;
+
+  const appsSnapshot = await db.collection("applications").where("pensionerId", "==", userId).get();
+  const applications = appsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+  return {
+    profile: userData,
+    applications: applications,
+    exportDate: new Date().toISOString()
+  };
+};
+
+export const deleteUserAccount = async (): Promise<void> => {
+  const user = auth.currentUser;
+  if (!user) throw new Error("No user logged in");
+  
+  const userId = user.uid;
+  logAudit(userId, AuditAction.DELETE_ACCOUNT, undefined, 'User initiated account deletion');
+
+  // 1. Delete Firestore Profile
+  await db.collection("users").doc(userId).delete();
+  
+  // 2. Delete Auth Account
+  // Note: This requires recent login. If it fails, the UI should prompt re-auth.
+  await user.delete();
+};
+
+
 // --- Applications ---
+
+// Track initial load to prevent spamming notifications on first mount
+let isInitialLoadMap: Record<string, boolean> = {};
 
 // Fix: Use firebase.Unsubscribe for the return type.
 export const getApplications = (role: UserRole, userId: string, onUpdate: (apps: ALCApplication[]) => void): (() => void) => {
   // Fix: Use the v8 compat namespaced firestore API for querying
   let q: firebase.firestore.Query = db.collection("applications");
+  
+  const listenerKey = `${role}_${userId}`;
+  isInitialLoadMap[listenerKey] = true;
 
   if (role === UserRole.PENSIONER) {
     q = q.where("pensionerId", "==", userId);
@@ -289,6 +341,34 @@ export const getApplications = (role: UserRole, userId: string, onUpdate: (apps:
 
   // Fix: Use the v8 compat namespaced firestore API for snapshots
   const unsubscribe = q.onSnapshot((querySnapshot) => {
+    
+    // --- Notification Logic ---
+    // We check docChanges to see what actually changed in real-time
+    if (!isInitialLoadMap[listenerKey]) {
+        querySnapshot.docChanges().forEach((change) => {
+            if (change.type === 'modified') {
+                const newData = change.doc.data() as ALCApplication;
+                // We use the ID to generate the message
+                const { title, body } = getStatusMessage(newData.status, change.doc.id);
+                sendNotification(title, body);
+            } else if (change.type === 'added') {
+                // Optional: Notify notary when a new application appears (if role is Notary)
+                if (role === UserRole.NOTARY) {
+                    const newData = change.doc.data() as ALCApplication;
+                    if (newData.status === ApplicationStatus.SUBMITTED) {
+                         sendNotification("New Application", `New request received from ${newData.pensionerName}`);
+                    }
+                }
+            }
+        });
+    }
+    
+    // Disable initial load flag after the first snapshot processes
+    if (isInitialLoadMap[listenerKey]) {
+        isInitialLoadMap[listenerKey] = false;
+    }
+    // --------------------------
+
     let apps: ALCApplication[] = [];
     querySnapshot.forEach((docSnap) => {
       const data = docSnap.data();
@@ -392,6 +472,7 @@ export const createApplication = async (appData: Omit<ALCApplication, 'id' | 'st
 
     // Fix: Use the v8 compat namespaced firestore API
     const docRef = await db.collection("applications").add(newAppPayload);
+    logAudit(userId, AuditAction.CREATE_APPLICATION, docRef.id, 'New Application Submitted');
     return { id: docRef.id, ...newAppPayload } as ALCApplication;
 
   } catch (error: any) {
@@ -444,6 +525,12 @@ export const updateApplicationStatus = async (
         ...finalNotaryData,
         history: [ ...currentHistory, { status, timestamp, details } ]
     });
+    
+    // Log audit
+    const currentUser = auth.currentUser;
+    if(currentUser) {
+        logAudit(currentUser.uid, AuditAction.UPDATE_STATUS, appId, `Status updated to ${status}`);
+    }
 };
 
 export const getApplicationById = async (id: string): Promise<ALCApplication | undefined> => {
@@ -451,7 +538,12 @@ export const getApplicationById = async (id: string): Promise<ALCApplication | u
     const docRef = db.collection("applications").doc(id);
     const snap = await docRef.get();
     if (snap.exists) {
-        return { id: snap.id, ...snap.data() } as ALCApplication;
+        const app = { id: snap.id, ...snap.data() } as ALCApplication;
+        const currentUser = auth.currentUser;
+        if(currentUser) {
+             logAudit(currentUser.uid, AuditAction.VIEW_APPLICATION, id, 'Viewed Application Details');
+        }
+        return app;
     }
     return undefined;
 };

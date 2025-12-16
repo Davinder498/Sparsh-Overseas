@@ -1,13 +1,13 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { User, ALCApplication, ApplicationStatus } from '../types';
 import { getApplications, updateApplicationStatus, linkGoogleAccount } from '../services/firebaseBackend';
 import { sendGmailWithAttachments } from '../services/gmailService';
-import { Plus, Send, FileText, CheckCircle, Clock, ArrowLeft, History, Loader2, Download, Info, X } from 'lucide-react';
+import { generateServerSidePDF, downloadPDFBlob, blobToBase64 } from '../services/pdfService';
+import { Plus, Send, FileText, CheckCircle, Clock, ArrowLeft, History, Loader2, Download, Info, X, CloudCog } from 'lucide-react';
 import StatusBadge from '../components/StatusBadge';
 import ALCForm from './ALCForm';
 import LifeCertificateTemplate from '../components/LifeCertificateTemplate';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 import SparshSubmissionModal, { SubmissionStatus } from '../components/SparshSubmissionModal';
 import { useNotifier } from '../contexts/NotificationContext';
 import { SPARSH_SERVICE_EMAIL } from '../constants';
@@ -29,6 +29,7 @@ export default function PensionerDashboard({ user, onBack }: Props) {
   const [submissionStatus, setSubmissionStatus] = useState<SubmissionStatus>('IDLE');
   const [errorMessage, setErrorMessage] = useState('');
   
+  // We keep the template for PREVIEW only. Generation happens on server.
   const certificateRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -50,44 +51,30 @@ export default function PensionerDashboard({ user, onBack }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, selectedApp?.id]);
 
-  const generatePdfBase64 = async (): Promise<string | null> => {
-    if (!certificateRef.current || !selectedApp) return null;
-    try {
-        await new Promise(resolve => setTimeout(resolve, 100));
-
-        const canvas = await html2canvas(certificateRef.current, {
-            scale: 2,
-            useCORS: true,
-            logging: false,
-            backgroundColor: '#ffffff'
-        });
-        const imgData = canvas.toDataURL('image/png');
-        const pdf = new jsPDF('p', 'mm', 'a4');
-
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const imgProps = pdf.getImageProperties(imgData);
-        const imgHeight = (imgProps.height * pdfWidth) / imgProps.width;
-        
-        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, imgHeight);
-        
-        return pdf.output('datauristring');
-    } catch (error) {
-        console.error("PDF Generation failed:", error);
-        notifier.addToast('Failed to generate PDF.', 'error');
-        return null;
-    }
-  };
-
   const handleDownloadPdf = async () => {
+      if (!selectedApp) return;
       setIsDownloading(true);
-      const pdfDataUri = await generatePdfBase64();
-      if (pdfDataUri) {
+      
+      try {
+          notifier.addToast("Generating PDF on secure server...", "info");
+          
+          // 1. Call Cloud Function
+          const { url } = await generateServerSidePDF(selectedApp.id);
+          
+          // 2. Trigger Browser Download
           const link = document.createElement('a');
-          link.href = pdfDataUri;
-          link.download = `Life-Certificate-${selectedApp?.id}.pdf`;
+          link.href = url;
+          link.download = `Life-Certificate-${selectedApp.id}.pdf`;
+          link.target = "_blank"; // Open in new tab if download fails
           link.click();
+          
+          notifier.addToast("PDF Download started.", "success");
+      } catch (error: any) {
+          console.error(error);
+          notifier.addToast(error.message, "error");
+      } finally {
+          setIsDownloading(false);
       }
-      setIsDownloading(false);
   };
 
   const handleAuthorize = async () => {
@@ -104,19 +91,21 @@ export default function PensionerDashboard({ user, onBack }: Props) {
   const handleAutoSubmit = async () => {
     if (!selectedApp) return;
     
-    setSubmissionStatus('GENERATING');
-    
-    const pdfDataUri = await generatePdfBase64();
-    if (!pdfDataUri) {
-        setSubmissionStatus('ERROR');
-        setErrorMessage("Failed to generate PDF. Please try again.");
-        return;
-    }
+    try {
+        setSubmissionStatus('GENERATING');
+        
+        // 1. Generate PDF on Server
+        const { url } = await generateServerSidePDF(selectedApp.id);
+        
+        setSubmissionStatus('PREPARING');
+        // 2. Download the Blob from the URL so we can attach it to email
+        const pdfBlob = await downloadPDFBlob(url);
+        const base64Data = await blobToBase64(pdfBlob);
 
-    setSubmissionStatus('SENDING');
+        setSubmissionStatus('SENDING');
 
-    const subject = `Annual Identification - ${selectedApp.rank || 'Rank N/A'} ${selectedApp.pensionerName} - SPARSH PPO No ${selectedApp.ppoNumber}`;
-    const body = `Dear SPARSH Team,
+        const subject = `Annual Identification - ${selectedApp.rank || 'Rank N/A'} ${selectedApp.pensionerName} - SPARSH PPO No ${selectedApp.ppoNumber}`;
+        const body = `Dear SPARSH Team,
 
 Please find my Annual Life Certificate (ALC) attached for the year.
 
@@ -132,15 +121,13 @@ Thank you,
 ${selectedApp.pensionerName}
 (Submitted securely via Sparsh Overseas Digital Portal)`;
 
-    try {
-        const cleanPdfData = pdfDataUri.split(',')[1];
         await sendGmailWithAttachments(
             SPARSH_SERVICE_EMAIL,
             subject,
             body,
             [{
                 filename: `ALC_${selectedApp.id}.pdf`,
-                base64Data: cleanPdfData,
+                base64Data: base64Data,
                 mimeType: 'application/pdf'
             }]
         );
@@ -154,14 +141,14 @@ ${selectedApp.pensionerName}
         }, 2000);
 
     } catch (error: any) {
-        console.error("Email submission failed:", error);
+        console.error("Submission failed:", error);
         setSubmissionStatus('ERROR');
         const msg = error.message.toLowerCase();
         if (msg.includes("access token") || msg.includes("401") || msg.includes("403")) {
             setErrorMessage("Authorization failed or expired. Please authorize your Google account again.");
             sessionStorage.removeItem('google_access_token');
         } else {
-            setErrorMessage("Failed to send email. Please try authorizing and submitting again.");
+            setErrorMessage(error.message || "Failed to process request.");
         }
     }
   };
@@ -193,7 +180,7 @@ ${selectedApp.pensionerName}
                 title="Secure Submission to SPARSH"
                 description={
                     <p>
-                        This will securely generate your Life Certificate PDF and email it directly to <strong>{SPARSH_SERVICE_EMAIL}</strong> using your connected Google account.
+                        This will generate a <strong>High-Fidelity PDF</strong> on our secure server and email it to <strong>{SPARSH_SERVICE_EMAIL}</strong>.
                     </p>
                 }
                 onAuthorize={handleAuthorize}
@@ -221,9 +208,14 @@ ${selectedApp.pensionerName}
                      <div className="lg:col-span-2 space-y-4">
                          <div className="flex items-center justify-between">
                              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 flex items-center">
-                                 <FileText className="h-5 w-5 mr-2 text-primary"/> Digital Certificate
+                                 <FileText className="h-5 w-5 mr-2 text-primary"/> Digital Certificate Preview
                              </h3>
+                             <span className="text-xs bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-1 rounded">View Only</span>
                         </div>
+                        {/* 
+                            NOTE: This component is now only for PREVIEW. 
+                            The actual PDF is generated on the server using data from Firestore.
+                        */}
                         <div className="bg-white dark:bg-gray-800 rounded shadow-xl overflow-hidden border border-gray-200 dark:border-gray-700">
                             <LifeCertificateTemplate ref={certificateRef} data={selectedApp} />
                         </div>
@@ -263,7 +255,7 @@ ${selectedApp.pensionerName}
                                             className="w-full inline-flex justify-center items-center px-4 py-3 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-primary bg-blue-50 dark:bg-blue-900/30 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 shadow-sm disabled:opacity-50 transition-all"
                                         >
                                             {isDownloading ? <Loader2 className="h-4 w-4 mr-2 animate-spin"/> : <Download className="h-4 w-4 mr-2" />}
-                                            {isDownloading ? 'Generating...' : 'Download PDF'}
+                                            {isDownloading ? 'Processing...' : 'Download Official PDF'}
                                         </button>
                                         <button 
                                             onClick={openModal}
@@ -293,7 +285,7 @@ ${selectedApp.pensionerName}
                                         className="w-full inline-flex justify-center items-center px-4 py-3 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-primary bg-blue-50 dark:bg-blue-900/30 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 shadow-sm disabled:opacity-50 transition-all"
                                     >
                                         {isDownloading ? <Loader2 className="h-4 w-4 mr-2 animate-spin"/> : <Download className="h-4 w-4 mr-2" />}
-                                        {isDownloading ? 'Generating...' : 'Download PDF'}
+                                        {isDownloading ? 'Processing...' : 'Download Official PDF'}
                                     </button>
                                 </div>
                             )}

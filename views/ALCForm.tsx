@@ -1,8 +1,9 @@
+
 import React, { useState, useRef } from 'react';
 import { User, ALCDocument } from '../types';
 import { createApplication } from '../services/firebaseBackend';
 import SignaturePad from '../components/SignaturePad';
-import { Camera, Sparkles, Loader2, Save, X, FileText, Upload, Trash2, Eye, AlertCircle, CheckCircle } from 'lucide-react';
+import { Camera, Sparkles, Loader2, Save, X, FileText, Upload, Trash2, Eye, AlertCircle, CheckCircle, ShieldCheck } from 'lucide-react';
 import { useNotifier } from '../contexts/NotificationContext';
 
 interface Props {
@@ -48,6 +49,7 @@ export default function ALCForm({ user, onCancel, onSuccess }: Props) {
   const [signature, setSignature] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeUploadType, setActiveUploadType] = useState<string | null>(null);
+  const [hasConsented, setHasConsented] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const notifier = useNotifier();
 
@@ -92,6 +94,11 @@ export default function ALCForm({ user, onCancel, onSuccess }: Props) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!hasConsented) {
+        notifier.addToast("You must agree to the Privacy Policy to proceed.", "warning");
+        return;
+    }
 
     const requiredDocsUploaded = DOCUMENT_SLOTS.every(slot => !slot.required || !!documents[slot.id]);
     if (!requiredDocsUploaded || !signature) {
@@ -144,7 +151,7 @@ export default function ALCForm({ user, onCancel, onSuccess }: Props) {
   };
   
   const requiredDocsUploaded = DOCUMENT_SLOTS.every(slot => !slot.required || !!documents[slot.id]);
-  const isFormReady = requiredDocsUploaded && !!signature;
+  const isFormReady = requiredDocsUploaded && !!signature && hasConsented;
 
   const inputClass = "mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-primary focus:ring-primary text-base md:text-sm border p-2 bg-white dark:bg-gray-700 text-black dark:text-white";
 
@@ -325,6 +332,27 @@ export default function ALCForm({ user, onCancel, onSuccess }: Props) {
             <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Digital Signature</label>
                 <SignaturePad onSave={setSignature} label="Sign below to declare truthfulness" />
+            </div>
+
+            {/* PRIVACY ACT COMPLIANCE: EXPLICIT CONSENT */}
+            <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-100 dark:border-blue-800">
+                <div className="flex items-start">
+                    <div className="flex items-center h-5">
+                        <input
+                            id="privacy-consent"
+                            name="privacy-consent"
+                            type="checkbox"
+                            checked={hasConsented}
+                            onChange={(e) => setHasConsented(e.target.checked)}
+                            className="focus:ring-primary h-4 w-4 text-primary border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700"
+                        />
+                    </div>
+                    <div className="ml-3 text-sm">
+                        <label htmlFor="privacy-consent" className="font-medium text-gray-700 dark:text-gray-300">
+                            I consent to the collection, processing, and transmission of my personal and biometric data to the Defence Accounts Department (SPARSH) as detailed in the <span className="text-primary font-bold">Privacy Policy</span>. I understand this data is required to process my Life Certificate.
+                        </label>
+                    </div>
+                </div>
             </div>
         </div>
 

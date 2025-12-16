@@ -4,6 +4,7 @@ import firebase from "firebase/compat/app";
 import "firebase/compat/firestore";
 import "firebase/compat/storage";
 import "firebase/compat/auth";
+import "firebase/compat/functions"; // Import Functions
 
 // IMPORTANT: Replace these placeholder values with your actual Firebase project configuration.
 // This method is generally NOT recommended for production environments due to security concerns.
@@ -31,3 +32,4 @@ if (!firebase.apps.length) {
 export const db = firebase.firestore();
 export const storage = firebase.storage();
 export const auth = firebase.auth();
+export const functions = firebase.functions(); // Export functions

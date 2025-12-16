@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { User } from '../types';
 import { sendGmailWithAttachments, GmailAttachment } from '../services/gmailService';
@@ -43,6 +44,7 @@ export default function UpdateIdForm({ user, onBack }: Props) {
   const [showSparshModal, setShowSparshModal] = useState(false);
   const [submissionStatus, setSubmissionStatus] = useState<SubmissionStatus>('IDLE');
   const [errorMessage, setErrorMessage] = useState('');
+  const [hasConsented, setHasConsented] = useState(false);
   const notifier = useNotifier();
   
   const [activeUploadType, setActiveUploadType] = useState<string | null>(null);
@@ -79,7 +81,7 @@ export default function UpdateIdForm({ user, onBack }: Props) {
   const isFormReady = (() => {
     const hasAadhaar = !!formData.aadhaarNumber && !!documents.aadhaar_copy;
     const hasPan = !!formData.panNumber && !!documents.pan_copy;
-    return (hasAadhaar || hasPan) && !!documents.ppo_copy;
+    return (hasAadhaar || hasPan) && !!documents.ppo_copy && hasConsented;
   })();
   
   const handleAuthorize = async () => {
@@ -173,7 +175,7 @@ ${formData.pensionerName}
         </div>
       </div>
       
-      <form onSubmit={(e) => { e.preventDefault(); setShowSparshModal(true); }} className="px-4 py-5 sm:p-6 space-y-8">
+      <form onSubmit={(e) => { e.preventDefault(); if(!hasConsented) { notifier.addToast("Please agree to the privacy policy.", "warning"); return; } setShowSparshModal(true); }} className="px-4 py-5 sm:p-6 space-y-8">
         
         <div className="space-y-4">
             <h4 className="text-base font-bold text-primary uppercase border-b dark:border-gray-700 pb-2 flex items-center"><span className="bg-primary text-white rounded-full w-6 h-6 flex items-center justify-center text-xs mr-2">1</span>Your Details</h4>
@@ -214,6 +216,27 @@ ${formData.pensionerName}
                         </div>
                     );
                 })}
+            </div>
+        </div>
+
+        {/* CONSENT CHECKBOX */}
+        <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-100 dark:border-blue-800">
+            <div className="flex items-start">
+                <div className="flex items-center h-5">
+                    <input
+                        id="privacy-consent"
+                        name="privacy-consent"
+                        type="checkbox"
+                        checked={hasConsented}
+                        onChange={(e) => setHasConsented(e.target.checked)}
+                        className="focus:ring-primary h-4 w-4 text-primary border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700"
+                    />
+                </div>
+                <div className="ml-3 text-sm">
+                    <label htmlFor="privacy-consent" className="font-medium text-gray-700 dark:text-gray-300">
+                        I consent to the collection and processing of my Aadhaar/PAN details as described in the Privacy Policy. I understand that this information is transmitted securely to SPARSH for the purpose of updating my service records.
+                    </label>
+                </div>
             </div>
         </div>
         

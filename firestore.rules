@@ -22,7 +22,18 @@ service cloud.firestore {
       // Allow any signed-in user to read profiles (e.g. Notary needs to see Pensioner names)
       allow read: if isSignedIn();
       // Allow users to create their own profile upon signup, and update only their own profile
-      allow create, update: if isOwner(userId);
+      allow create, update, delete: if isOwner(userId);
+    }
+    
+    // Audit Logs Collection
+    match /audit_logs/{logId} {
+      // Users can create logs for themselves (audit trail), but NEVER update or delete them.
+      // We assume the user is honest about their ID here, but in a real app, Cloud Functions handle this.
+      allow create: if isOwner(request.resource.data.userId);
+      // Only admins (or nobody) should read raw audit logs in bulk from client, 
+      // but for this MVP, we disable read for regular users to prevent scraping.
+      allow read: if false; 
+      allow update, delete: if false; // Immutable
     }
     
     // Applications Collection
