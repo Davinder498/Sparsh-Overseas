@@ -114,8 +114,8 @@ export const loginWithGoogle = async (role: UserRole = UserRole.PENSIONER): Prom
   const result = await auth.signInWithPopup(provider);
   
   // This gives you a Google Access Token. You can use it to access the Google API.
-  // Fix: Use the explicitly imported GoogleAuthProvider
-  const credential = firebase.auth.GoogleAuthProvider.credentialFromResult(result);
+  // Use result.credential directly in compat/v8 mode.
+  const credential = result.credential as firebase.auth.OAuthCredential;
   const token = credential?.accessToken;
   
   if (token) {
@@ -180,8 +180,8 @@ export const linkGoogleAccount = async (): Promise<string> => {
     try {
         // Fix: Use the v8 compat namespaced auth API
         const result = await user.linkWithPopup(provider);
-        // Fix: Use the explicitly imported GoogleAuthProvider
-        const credential = firebase.auth.GoogleAuthProvider.credentialFromResult(result);
+        // Use result.credential directly in compat/v8 mode.
+        const credential = result.credential as firebase.auth.OAuthCredential;
         const token = credential?.accessToken;
 
         if (token) {

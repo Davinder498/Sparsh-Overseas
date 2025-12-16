@@ -19,6 +19,29 @@ import RequestDocumentsForm from './views/RequestDocumentsForm';
 import { useNotifier } from './contexts/NotificationContext';
 import { captureError } from './services/errorMonitoringService';
 
+// Extracted DetailItem component to prevent re-rendering issues (focus loss)
+interface DetailItemProps {
+  label: string;
+  value?: string;
+  name: string;
+  type?: string;
+  editMode: boolean;
+  area?: boolean;
+  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+}
+
+const DetailItem: React.FC<DetailItemProps> = ({ label, value, name, type = "text", editMode, area = false, onChange }) => (
+  <div>
+    <label className="block text-sm font-medium text-gray-500 dark:text-gray-400">{label}</label>
+    {editMode ? (
+      area ? <textarea name={name} value={value || ''} onChange={onChange} rows={3} className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm p-2 bg-white dark:bg-gray-700"/>
+           : <input type={type} name={name} value={value || ''} onChange={onChange} className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm p-2 bg-white dark:bg-gray-700"/>
+    ) : (
+      <p className="mt-1 text-sm text-gray-900 dark:text-gray-100">{value || <span className="text-gray-400 italic">Not set</span>}</p>
+    )}
+  </div>
+);
+
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
@@ -261,18 +284,6 @@ const App: React.FC = () => {
         }
     };
     
-    const DetailItem = ({ label, value, name, type = "text", editMode, area = false }) => (
-      <div>
-        <label className="block text-sm font-medium text-gray-500 dark:text-gray-400">{label}</label>
-        {editMode ? (
-          area ? <textarea name={name} value={value || ''} onChange={handleInputChange} rows={3} className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm p-2 bg-white dark:bg-gray-700"/>
-               : <input type={type} name={name} value={value || ''} onChange={handleInputChange} className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm p-2 bg-white dark:bg-gray-700"/>
-        ) : (
-          <p className="mt-1 text-sm text-gray-900 dark:text-gray-100">{value || <span className="text-gray-400 italic">Not set</span>}</p>
-        )}
-      </div>
-    );
-
     return (
         <div className="bg-white dark:bg-gray-800 shadow rounded-lg border dark:border-gray-700">
             <div className="px-4 py-5 sm:px-6 flex justify-between items-center border-b dark:border-gray-700">
@@ -289,25 +300,25 @@ const App: React.FC = () => {
             <form onSubmit={handleSave}>
                 <div className="px-4 py-5 sm:p-6 space-y-8">
                      <dl className="grid grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2">
-                        <DetailItem label="Full Name" name="name" value={formData.name} editMode={isEditing} />
-                        <DetailItem label="Father/Husband Name" name="fatherHusbandName" value={formData.fatherHusbandName} editMode={isEditing} />
-                        <DetailItem label="Date of Birth" name="dateOfBirth" type="date" value={formData.dateOfBirth} editMode={isEditing} />
-                        <DetailItem label="Place of Birth" name="placeOfBirth" value={formData.placeOfBirth} editMode={isEditing} />
-                        <DetailItem label="Nationality" name="nationality" value={formData.nationality} editMode={isEditing} />
+                        <DetailItem label="Full Name" name="name" value={formData.name} editMode={isEditing} onChange={handleInputChange} />
+                        <DetailItem label="Father/Husband Name" name="fatherHusbandName" value={formData.fatherHusbandName} editMode={isEditing} onChange={handleInputChange} />
+                        <DetailItem label="Date of Birth" name="dateOfBirth" type="date" value={formData.dateOfBirth} editMode={isEditing} onChange={handleInputChange} />
+                        <DetailItem label="Place of Birth" name="placeOfBirth" value={formData.placeOfBirth} editMode={isEditing} onChange={handleInputChange} />
+                        <DetailItem label="Nationality" name="nationality" value={formData.nationality} editMode={isEditing} onChange={handleInputChange} />
                         <div className="sm:col-span-2"><hr className="dark:border-gray-700"/></div>
-                        <DetailItem label="Service Number" name="serviceNumber" value={formData.serviceNumber} editMode={isEditing} />
-                        <DetailItem label="Rank" name="rank" value={formData.rank} editMode={isEditing} />
-                        <DetailItem label="PPO Number" name="ppoNumber" value={formData.ppoNumber} editMode={isEditing} />
+                        <DetailItem label="Service Number" name="serviceNumber" value={formData.serviceNumber} editMode={isEditing} onChange={handleInputChange} />
+                        <DetailItem label="Rank" name="rank" value={formData.rank} editMode={isEditing} onChange={handleInputChange} />
+                        <DetailItem label="PPO Number" name="ppoNumber" value={formData.ppoNumber} editMode={isEditing} onChange={handleInputChange} />
                         <div className="sm:col-span-2"><hr className="dark:border-gray-700"/></div>
-                        <DetailItem label="Passport Number" name="passportNumber" value={formData.passportNumber} editMode={isEditing} />
-                        <DetailItem label="Passport Authority" name="passportAuthority" value={formData.passportAuthority} editMode={isEditing} />
-                        <DetailItem label="Passport Issue Date" name="passportIssueDate" type="date" value={formData.passportIssueDate} editMode={isEditing} />
-                        <DetailItem label="Passport Expiry Date" name="passportExpiryDate" type="date" value={formData.passportExpiryDate} editMode={isEditing} />
+                        <DetailItem label="Passport Number" name="passportNumber" value={formData.passportNumber} editMode={isEditing} onChange={handleInputChange} />
+                        <DetailItem label="Passport Authority" name="passportAuthority" value={formData.passportAuthority} editMode={isEditing} onChange={handleInputChange} />
+                        <DetailItem label="Passport Issue Date" name="passportIssueDate" type="date" value={formData.passportIssueDate} editMode={isEditing} onChange={handleInputChange} />
+                        <DetailItem label="Passport Expiry Date" name="passportExpiryDate" type="date" value={formData.passportExpiryDate} editMode={isEditing} onChange={handleInputChange} />
                         <div className="sm:col-span-2"><hr className="dark:border-gray-700"/></div>
-                        <div className="sm:col-span-2"><DetailItem label="Overseas Address" name="overseasAddress" value={formData.overseasAddress} editMode={isEditing} area={true} /></div>
-                        <div className="sm:col-span-2"><DetailItem label="Indian Address" name="indianAddress" value={formData.indianAddress} editMode={isEditing} area={true} /></div>
-                        <DetailItem label="Phone Number (Overseas)" name="phoneNumber" value={formData.phoneNumber} editMode={isEditing} />
-                        <DetailItem label="Phone Number (Indian)" name="indianPhoneNumber" value={formData.indianPhoneNumber} editMode={isEditing} />
+                        <div className="sm:col-span-2"><DetailItem label="Overseas Address" name="overseasAddress" value={formData.overseasAddress} editMode={isEditing} area={true} onChange={handleInputChange} /></div>
+                        <div className="sm:col-span-2"><DetailItem label="Indian Address" name="indianAddress" value={formData.indianAddress} editMode={isEditing} area={true} onChange={handleInputChange} /></div>
+                        <DetailItem label="Phone Number (Overseas)" name="phoneNumber" value={formData.phoneNumber} editMode={isEditing} onChange={handleInputChange} />
+                        <DetailItem label="Phone Number (Indian)" name="indianPhoneNumber" value={formData.indianPhoneNumber} editMode={isEditing} onChange={handleInputChange} />
                      </dl>
                 </div>
                 {isEditing && (
