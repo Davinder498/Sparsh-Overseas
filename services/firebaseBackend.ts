@@ -204,9 +204,21 @@ export const linkGoogleAccount = async (): Promise<string> => {
         }
     } catch (error: any) {
         console.error("Error linking Google account:", error);
+
+        // RECOVERY LOGIC:
+        // If the credential is already in use by another user, we cannot link it to the current profile.
+        // HOWEVER, the authentication WAS successful, and we have the credentials needed to send the email.
+        // We can extract the accessToken from the error object and proceed.
         if (error.code === 'auth/credential-already-in-use') {
-            throw new Error("This Google account is already associated with another user.");
+             const credential = error.credential as firebase.auth.OAuthCredential;
+             if (credential && credential.accessToken) {
+                 // Successfully recovered token from the error
+                 sessionStorage.setItem('google_access_token', credential.accessToken);
+                 return credential.accessToken;
+             }
+             throw new Error("This Google account is linked to another user. Please sign out and sign in with that account.");
         }
+
         if (error.code === 'auth/popup-closed-by-user') {
             throw new Error("Authorization popup was closed before completion.");
         }
