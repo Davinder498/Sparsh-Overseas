@@ -1,3 +1,9 @@
+// Adds global declaration for `ImportMeta.env` to resolve TypeScript error if `vite/client` types are not found.
+declare global {
+  interface ImportMeta {
+    readonly env: Record<string, string>;
+  }
+}
 
 import React, { useState, useEffect } from 'react';
 import { User, UserRole, View, Theme } from './types';
@@ -194,7 +200,7 @@ const App: React.FC = () => {
         <div className="max-w-md w-full space-y-8 bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700">
           <div className="text-center">
             <div className="mx-auto h-24 w-24 flex items-center justify-center mb-6">
-               <img src="/logo.png" alt="Sparsh Overseas" className="h-full w-full rounded-2xl shadow-lg" />
+               {/* Logo removed */}
             </div>
             <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
               {isRegistering ? 'Create an Account' : 'Sign In to Your Account'}
@@ -484,7 +490,7 @@ const App: React.FC = () => {
         </div>
     );
   };
-
+  
   const renderView = () => {
     switch (currentView) {
       case 'LANDING': return <LandingPage navigateTo={navigateTo} theme={theme} setTheme={setTheme} />;
@@ -587,8 +593,8 @@ const App: React.FC = () => {
               </button>
             </div>
             <div className="flex-1 h-0 pt-5 pb-4 overflow-y-auto">
-              <div className="flex-shrink-0 flex items-center px-4">
-                <img src="/logo.png" alt="Logo" className="h-10 w-10 rounded-lg" />
+              <div className="flex-shrink-0 flex items-center px-4 justify-center">
+                {/* Logo removed */}
                 <span className="ml-3 text-xl font-bold text-gray-900 dark:text-white">Sparsh Overseas</span>
               </div>
               <nav className="mt-5 px-2 space-y-1">
@@ -627,8 +633,8 @@ const App: React.FC = () => {
       <div className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0">
         <div className="flex-1 flex flex-col min-h-0 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
           <div className="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
-            <div className="flex items-center flex-shrink-0 px-4">
-              <img src="/logo.png" alt="Logo" className="h-9 w-9 rounded-lg" />
+            <div className="flex items-center flex-shrink-0 px-4 justify-center">
+              {/* Logo removed */}
               <span className="ml-3 text-xl font-bold text-gray-900 dark:text-white">Sparsh Overseas</span>
             </div>
             <nav className="mt-5 flex-1 px-2 space-y-1">

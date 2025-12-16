@@ -4,6 +4,9 @@ import { FileText, Users, Briefcase, Mail, Fingerprint, Shield, ArrowRight } fro
 import ThemeToggle from '../components/ThemeToggle';
 import { Theme } from '../types';
 
+// Reverted: Removed direct import of appLogo to avoid module resolution errors in some environments.
+// Image is now referenced directly by its root-relative path.
+
 const services = [
   { title: 'Annual Identification', description: 'Submit your annual Life Certificate (Jeevan Pramaan) for SPARSH.', icon: FileText },
   { title: 'Initiate Family Pension', description: 'Report the death of an existing pensioner to start the family pension process.', icon: Users },
@@ -26,8 +29,8 @@ export default function LandingPage({ navigateTo, theme, setTheme }: Props) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <img src="/logo.png" alt="Logo" className="h-10 w-10 rounded-lg shadow-sm" />
-              <span className="ml-3 text-xl font-bold text-gray-900 dark:text-white">Sparsh Overseas</span>
+              {/* Logo removed */}
+              <span className="text-xl font-bold text-gray-900 dark:text-white">Sparsh Overseas</span>
             </div>
             <div className="flex items-center space-x-2">
               <ThemeToggle theme={theme} setTheme={setTheme} />
@@ -86,7 +89,7 @@ export default function LandingPage({ navigateTo, theme, setTheme }: Props) {
                             </div>
                             <div className="mt-4">
                                 <h3 className="text-lg font-medium text-gray-900 dark:text-white">{service.title}</h3>
-                                <p className="mt-2 text-base text-gray-500 dark:text-gray-400">{service.description}</p>
+                                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{service.description}</p>
                             </div>
                         </div>
                     ))}

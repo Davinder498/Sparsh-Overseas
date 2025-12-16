@@ -54,7 +54,7 @@ export const sendNotification = (title: string, body: string) => {
     try {
       new Notification(title, {
         body: body,
-        icon: '/vite.svg', // Fallback icon or app icon
+        // Removed icon: '/vite.svg'
       });
     } catch (e) {
       console.error("Failed to create system notification", e);

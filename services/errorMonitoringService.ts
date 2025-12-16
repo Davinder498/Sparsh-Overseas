@@ -46,16 +46,16 @@ export const initErrorMonitoring = (): void => {
  * @param context Additional key-value pairs to provide context.
  */
 export const captureError = (error: any, context?: Record<string, any>): void => {
-  // In a real implementation, you would send this data to your monitoring service.
-  // Example: Sentry.captureException(error, { extra: context });
-  
-  console.error("[Error Monitoring Service]", {
-    error: {
-      message: error?.message,
-      stack: error?.stack,
-      name: error?.name
-    },
-    context,
-    timestamp: new Date().toISOString()
-  });
+  const errorMessage = error?.message || 'Unknown error';
+  const errorStack = error?.stack || 'No stack trace available';
+  const errorName = error?.name || 'Error';
+
+  // Log error details in a more explicit, readable format
+  console.error(
+    `[Error Monitoring Service] ${errorName}: ${errorMessage}`,
+    `Stack: ${errorStack}`,
+    `Context: ${JSON.stringify(context, null, 2)}`, // Stringify context for clear output
+    'Original Error Object:', error, // Also pass the original error object for browser dev tools to inspect
+    'Timestamp:', new Date().toISOString()
+  );
 };
