@@ -193,8 +193,8 @@ const App: React.FC = () => {
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-8 bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700">
           <div className="text-center">
-            <div className="mx-auto h-16 w-16 bg-blue-50 dark:bg-gray-700 rounded-full flex items-center justify-center mb-4">
-               <Shield className="h-8 w-8 text-primary" />
+            <div className="mx-auto h-24 w-24 flex items-center justify-center mb-6">
+               <img src="/logo.png" alt="Sparsh Overseas" className="h-full w-full rounded-2xl shadow-lg" />
             </div>
             <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
               {isRegistering ? 'Create an Account' : 'Sign In to Your Account'}
@@ -588,8 +588,8 @@ const App: React.FC = () => {
             </div>
             <div className="flex-1 h-0 pt-5 pb-4 overflow-y-auto">
               <div className="flex-shrink-0 flex items-center px-4">
-                <Shield className="h-8 w-8 text-primary" />
-                <span className="ml-2 text-xl font-bold">Sparsh Overseas</span>
+                <img src="/logo.png" alt="Logo" className="h-10 w-10 rounded-lg" />
+                <span className="ml-3 text-xl font-bold text-gray-900 dark:text-white">Sparsh Overseas</span>
               </div>
               <nav className="mt-5 px-2 space-y-1">
                 {drawerNavItems.map(item => (
@@ -628,8 +628,8 @@ const App: React.FC = () => {
         <div className="flex-1 flex flex-col min-h-0 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
           <div className="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
             <div className="flex items-center flex-shrink-0 px-4">
-              <Shield className="h-8 w-8 text-primary" />
-              <span className="ml-2 text-xl font-bold">Sparsh Overseas</span>
+              <img src="/logo.png" alt="Logo" className="h-9 w-9 rounded-lg" />
+              <span className="ml-3 text-xl font-bold text-gray-900 dark:text-white">Sparsh Overseas</span>
             </div>
             <nav className="mt-5 flex-1 px-2 space-y-1">
               {drawerNavItems.map(item => (

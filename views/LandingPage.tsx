@@ -26,8 +26,8 @@ export default function LandingPage({ navigateTo, theme, setTheme }: Props) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <Shield className="h-8 w-8 text-primary" />
-              <span className="ml-2 text-xl font-bold">Sparsh Overseas</span>
+              <img src="/logo.png" alt="Logo" className="h-10 w-10 rounded-lg shadow-sm" />
+              <span className="ml-3 text-xl font-bold text-gray-900 dark:text-white">Sparsh Overseas</span>
             </div>
             <div className="flex items-center space-x-2">
               <ThemeToggle theme={theme} setTheme={setTheme} />
