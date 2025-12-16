@@ -110,8 +110,20 @@ export const loginWithGoogle = async (role: UserRole = UserRole.PENSIONER): Prom
     'auth_domain': authDomain
   });
   
-  // Fix: Use the v8 compat namespaced auth API
-  const result = await auth.signInWithPopup(provider);
+  let result;
+  try {
+    // Fix: Use the v8 compat namespaced auth API
+    result = await auth.signInWithPopup(provider);
+  } catch (error: any) {
+    console.error("Google Sign-In Error:", error);
+    if (error.code === 'auth/unauthorized-domain') {
+        throw new Error(`Configuration Error: The domain "${window.location.hostname}" is not authorized. Please add it to Firebase Console > Authentication > Settings > Authorized Domains.`);
+    }
+    if (error.code === 'auth/popup-closed-by-user') {
+        throw new Error("Sign-in cancelled by user.");
+    }
+    throw error;
+  }
   
   // This gives you a Google Access Token. You can use it to access the Google API.
   // Use result.credential directly in compat/v8 mode.
@@ -197,6 +209,9 @@ export const linkGoogleAccount = async (): Promise<string> => {
         }
         if (error.code === 'auth/popup-closed-by-user') {
             throw new Error("Authorization popup was closed before completion.");
+        }
+        if (error.code === 'auth/unauthorized-domain') {
+             throw new Error(`Configuration Error: The domain "${window.location.hostname}" is not authorized. Please add it to Firebase Console > Authentication > Settings > Authorized Domains.`);
         }
         throw new Error("Failed to link Google Account. Please try again.");
     }

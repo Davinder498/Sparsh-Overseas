@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -47,7 +48,7 @@ service cloud.firestore {
         ( isNotary() 
           && resource.data.status == 'SUBMITTED'
           && (request.resource.data.status == 'ATTESTED' || request.resource.data.status == 'REJECTED')
-          && request.resource.data.keys().hasOnly([
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
               'status', 'notaryId', 'notaryName', 'notarySignature',
               'attestationDate', 'rejectionReason', 'history'
             ])
@@ -59,7 +60,7 @@ service cloud.firestore {
           && isOwner(resource.data.pensionerId) 
           && resource.data.status == 'ATTESTED'
           && request.resource.data.status == 'SENT_TO_SPARSH'
-          && request.resource.data.keys().hasOnly(['status', 'history'])
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'history'])
         )
       );
     }
