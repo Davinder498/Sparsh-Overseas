@@ -5,6 +5,7 @@ import { linkGoogleAccount } from '../services/firebaseBackend';
 import { ArrowLeft, Send, Upload, Trash2, Eye, CheckCircle, Info } from 'lucide-react';
 import SparshSubmissionModal, { SubmissionStatus } from '../components/SparshSubmissionModal';
 import { useNotifier } from '../contexts/NotificationContext';
+import { SPARSH_SERVICE_EMAIL } from '../constants';
 
 interface Props {
   user: User;
@@ -83,7 +84,6 @@ export default function UpdateEmailForm({ user, onBack }: Props) {
     
     setSubmissionStatus('SENDING');
     
-    const sparshEmail = "sparshnri.dad@gov.in";
     const subject = `Request for Updation of Email/Mobile - ${formData.pensionerName} - SPARSH PPO No ${formData.ppoNumber}`;
     const body = `Dear SPARSH Team,
 
@@ -106,7 +106,7 @@ ${formData.pensionerName}
 (Submitted securely via Sparsh Overseas Digital Portal)`;
 
     try {
-        await sendGmailWithAttachments(sparshEmail, subject, body, attachments);
+        await sendGmailWithAttachments(SPARSH_SERVICE_EMAIL, subject, body, attachments);
         setSubmissionStatus('SUCCESS');
         setTimeout(() => {
             setShowSparshModal(false);
@@ -135,7 +135,7 @@ ${formData.pensionerName}
             isOpen={showSparshModal}
             onClose={() => setShowSparshModal(false)}
             title="Secure Submission to SPARSH"
-            description={<p>This will securely email your request to <strong>sparshnri.dad@gov.in</strong> using your Google account.</p>}
+            description={<p>This will securely email your request to <strong>{SPARSH_SERVICE_EMAIL}</strong> using your Google account.</p>}
             onAuthorize={handleAuthorize}
             onSubmit={handleAutoSubmit}
             submissionStatus={submissionStatus}

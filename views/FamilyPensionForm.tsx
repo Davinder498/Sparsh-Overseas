@@ -2,9 +2,10 @@ import React, { useState, useRef } from 'react';
 import { User } from '../types';
 import { sendGmailWithAttachments, GmailAttachment } from '../services/gmailService';
 import { linkGoogleAccount } from '../services/firebaseBackend';
-import { ArrowLeft, Loader2, Send, Upload, Trash2, Eye, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Send, Upload, Trash2, Eye, CheckCircle } from 'lucide-react';
 import SparshSubmissionModal, { SubmissionStatus } from '../components/SparshSubmissionModal';
 import { useNotifier } from '../contexts/NotificationContext';
+import { SPARSH_SERVICE_EMAIL } from '../constants';
 
 interface Props {
   user: User;
@@ -132,7 +133,6 @@ export default function FamilyPensionForm({ user, onBack }: Props) {
     
     setSubmissionStatus('SENDING');
     
-    const sparshEmail = "sparshnri.dad@gov.in";
     const subject = `Initiate Family Pension - ${formData.deceasedName} - SPARSH PPO No ${formData.deceasedPpoNo}`;
     const body = `Dear SPARSH Team,
 
@@ -172,7 +172,7 @@ ${formData.reporterName}
 (Submitted securely via Sparsh Overseas Digital Portal)`;
 
     try {
-        await sendGmailWithAttachments(sparshEmail, subject, body, attachments);
+        await sendGmailWithAttachments(SPARSH_SERVICE_EMAIL, subject, body, attachments);
         setSubmissionStatus('SUCCESS');
         setTimeout(() => {
             setShowSparshModal(false);
@@ -200,7 +200,7 @@ ${formData.reporterName}
             isOpen={showSparshModal}
             onClose={() => setShowSparshModal(false)}
             title="Secure Submission to SPARSH"
-            description={<p>This will securely email the completed form and attached documents to <strong>sparshnri.dad@gov.in</strong> using your connected Google account.</p>}
+            description={<p>This will securely email the completed form and attached documents to <strong>{SPARSH_SERVICE_EMAIL}</strong> using your connected Google account.</p>}
             onAuthorize={handleAuthorize}
             onSubmit={handleAutoSubmit}
             submissionStatus={submissionStatus}

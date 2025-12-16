@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { User, ALCApplication, ApplicationStatus } from '../types';
 import { getApplications, updateApplicationStatus, linkGoogleAccount } from '../services/firebaseBackend';
 import { sendGmailWithAttachments } from '../services/gmailService';
-import { Plus, Send, FileText, CheckCircle, Clock, Eye, X, ArrowLeft, Calendar, History, Loader2, Download, Info } from 'lucide-react';
+import { Plus, Send, FileText, CheckCircle, Clock, ArrowLeft, History, Loader2, Download, Info, X } from 'lucide-react';
 import StatusBadge from '../components/StatusBadge';
 import ALCForm from './ALCForm';
 import LifeCertificateTemplate from '../components/LifeCertificateTemplate';
@@ -10,6 +10,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import SparshSubmissionModal, { SubmissionStatus } from '../components/SparshSubmissionModal';
 import { useNotifier } from '../contexts/NotificationContext';
+import { SPARSH_SERVICE_EMAIL } from '../constants';
 
 interface Props {
   user: User;
@@ -114,7 +115,6 @@ export default function PensionerDashboard({ user, onBack }: Props) {
 
     setSubmissionStatus('SENDING');
 
-    const sparshEmail = "sparshnri.dad@gov.in";
     const subject = `Annual Identification - ${selectedApp.rank || 'Rank N/A'} ${selectedApp.pensionerName} - SPARSH PPO No ${selectedApp.ppoNumber}`;
     const body = `Dear SPARSH Team,
 
@@ -135,7 +135,7 @@ ${selectedApp.pensionerName}
     try {
         const cleanPdfData = pdfDataUri.split(',')[1];
         await sendGmailWithAttachments(
-            sparshEmail,
+            SPARSH_SERVICE_EMAIL,
             subject,
             body,
             [{
@@ -193,7 +193,7 @@ ${selectedApp.pensionerName}
                 title="Secure Submission to SPARSH"
                 description={
                     <p>
-                        This will securely generate your Life Certificate PDF and email it directly to <strong>sparshnri.dad@gov.in</strong> using your connected Google account.
+                        This will securely generate your Life Certificate PDF and email it directly to <strong>{SPARSH_SERVICE_EMAIL}</strong> using your connected Google account.
                     </p>
                 }
                 onAuthorize={handleAuthorize}
