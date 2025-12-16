@@ -1,9 +1,10 @@
 
-
-
 import { db, storage, auth } from './firebaseConfig';
 // Fix: Import the compat version of Firebase to access namespaced APIs and types.
 import firebase from 'firebase/compat/app';
+import 'firebase/compat/auth'; // Ensure the auth module is loaded for compat APIs
+// Fix: Remove direct named imports for AuthProviders. They are accessed via firebase.auth.
+// import { GoogleAuthProvider, EmailAuthProvider } from 'firebase/compat/auth'; 
 import { ALCApplication, ApplicationStatus, User, UserRole } from '../types';
 
 // Helper: Convert Base64 Data URI to Blob for robust upload
@@ -113,7 +114,7 @@ export const loginWithGoogle = async (role: UserRole = UserRole.PENSIONER): Prom
   const result = await auth.signInWithPopup(provider);
   
   // This gives you a Google Access Token. You can use it to access the Google API.
-  // Fix: Use the v8 compat namespaced auth API
+  // Fix: Use the explicitly imported GoogleAuthProvider
   const credential = firebase.auth.GoogleAuthProvider.credentialFromResult(result);
   const token = credential?.accessToken;
   
@@ -147,7 +148,7 @@ export const loginWithGoogle = async (role: UserRole = UserRole.PENSIONER): Prom
         name: user.displayName || "Unknown",
         email: user.email || "",
         role: role, 
-        avatar: user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || "User")}&background=random`,
+        avatar: user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || "User")}&background=random}`,
         fatherHusbandName: '', dateOfBirth: '', placeOfBirth: '', nationality: '', serviceNumber: '', rank: '', ppoNumber: '',
         passportNumber: '', passportIssueDate: '', passportExpiryDate: '', passportAuthority: '', overseasAddress: '',
         indianAddress: '', phoneNumber: '', indianPhoneNumber: ''
@@ -164,7 +165,7 @@ export const linkGoogleAccount = async (): Promise<string> => {
         throw new Error("No user is currently signed in to link an account.");
     }
 
-    // Fix: Use the v8 compat namespaced auth API
+    // Fix: Use the explicitly imported GoogleAuthProvider
     const provider = new firebase.auth.GoogleAuthProvider();
     provider.addScope('https://www.googleapis.com/auth/gmail.send');
 
@@ -179,6 +180,7 @@ export const linkGoogleAccount = async (): Promise<string> => {
     try {
         // Fix: Use the v8 compat namespaced auth API
         const result = await user.linkWithPopup(provider);
+        // Fix: Use the explicitly imported GoogleAuthProvider
         const credential = firebase.auth.GoogleAuthProvider.credentialFromResult(result);
         const token = credential?.accessToken;
 
@@ -207,7 +209,7 @@ export const changeUserPassword = async (currentPassword: string, newPassword: s
   }
 
   // Re-authenticate the user as a security measure
-  // Fix: Use the v8 compat namespaced auth API
+  // Fix: Use the explicitly imported EmailAuthProvider
   const credential = firebase.auth.EmailAuthProvider.credential(user.email, currentPassword);
   
   try {
