@@ -1,3 +1,4 @@
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: [
@@ -11,9 +12,13 @@ export default {
         sans: ['Inter', 'sans-serif'],
       },
       colors: {
-        primary: '#1e3a8a', // Dark Blue
-        secondary: '#1d4ed8', // Blue
-        accent: '#f59e0b', // Amber/Gold
+        primary: {
+          DEFAULT: '#1e40af', // Professional Blue
+          dark: '#1e3a8a',    // Darker Blue
+          soft: '#eff6ff',    // Soft Blue tint
+        },
+        secondary: '#0f172a', // Slate/Dark Blue
+        accent: '#3b82f6',    // Sky Blue accent
       }
     },
   },

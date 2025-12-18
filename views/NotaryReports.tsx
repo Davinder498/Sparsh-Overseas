@@ -1,5 +1,6 @@
+
 import React, { useState } from 'react';
-import { DownloadCloud, Loader2 } from 'lucide-react';
+import { DownloadCloud, Loader2, FileSpreadsheet } from 'lucide-react';
 import { useNotifier } from '../contexts/NotificationContext';
 import { getApplicationsForReport } from '../services/firebaseBackend';
 import { User } from '../types';
@@ -20,7 +21,7 @@ const NotaryReports: React.FC<Props> = ({ user }) => {
       const reportData = await getApplicationsForReport(user.id);
       
       if (reportData.length === 0) {
-        notifier.addToast('No completed applications found to generate a report.', 'info');
+        notifier.addToast('No completed applications found.', 'info');
         setIsLoading(false);
         return;
       }
@@ -47,12 +48,12 @@ const NotaryReports: React.FC<Props> = ({ user }) => {
       const link = document.createElement('a');
       const url = URL.createObjectURL(blob);
       link.setAttribute('href', url);
-      link.setAttribute('download', `attestation_log_${new Date().toISOString().split('T')[0]}.csv`);
+      link.setAttribute('download', `sparsh_attestation_log_${new Date().toISOString().split('T')[0]}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       
-      notifier.addToast('Report download started.', 'success');
+      notifier.addToast('Report downloaded successfully.', 'success');
 
     } catch (error) {
       notifier.addToast('Failed to generate report.', 'error');
@@ -63,37 +64,38 @@ const NotaryReports: React.FC<Props> = ({ user }) => {
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 shadow rounded-lg border dark:border-gray-700">
-      <div className="px-4 py-5 sm:px-6 border-b dark:border-gray-700">
-        <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100">
-          Download Reports
+    <div className="bg-white dark:bg-gray-800 shadow rounded-lg border dark:border-gray-700 overflow-hidden">
+      <div className="px-4 py-5 sm:px-6 border-b dark:border-gray-700 bg-primary-soft/50 dark:bg-stone-900/50">
+        <h3 className="text-lg leading-6 font-bold text-gray-900 dark:text-gray-100 flex items-center">
+          <FileSpreadsheet className="w-5 h-5 mr-2 text-primary dark:text-accent" />
+          Audit & Compliance Reports
         </h3>
-        <p className="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
-          Export your attestation and rejection history for record-keeping.
+        <p className="mt-1 max-w-2xl text-xs text-gray-500 dark:text-gray-400">
+          Export your attestation history for official record-keeping.
         </p>
       </div>
-      <div className="p-6 text-center">
-        <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-blue-100 dark:bg-blue-900/50 mb-4">
-            <DownloadCloud className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+      <div className="p-10 text-center">
+        <div className="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-primary-soft dark:bg-primary/20 mb-6">
+            <DownloadCloud className="h-10 w-10 text-primary dark:text-accent" />
         </div>
-        <h4 className="text-md font-medium text-gray-800 dark:text-gray-200">Attestation Activity Log</h4>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 mb-6">
-          Download a CSV file containing all applications you have processed.
+        <h4 className="text-xl font-bold text-gray-900 dark:text-gray-100">Attestation Activity Log</h4>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 mb-8 max-w-sm mx-auto">
+          Generate a secure CSV export of all applications you have attested or rejected in the current calendar year.
         </p>
         <button
           onClick={handleDownload}
           disabled={isLoading}
-          className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50"
+          className="inline-flex items-center justify-center px-8 py-3 border border-transparent text-sm font-bold rounded-md text-white bg-primary hover:bg-primary-dark shadow-md transition-all disabled:opacity-50"
         >
           {isLoading ? (
             <>
               <Loader2 className="animate-spin h-5 w-5 mr-2" />
-              Generating...
+              Generating Report...
             </>
           ) : (
             <>
               <DownloadCloud className="h-5 w-5 mr-2" />
-              Download CSV
+              Download CSV Report
             </>
           )}
         </button>

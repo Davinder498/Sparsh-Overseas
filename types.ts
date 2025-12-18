@@ -17,7 +17,8 @@ export type View = 'LOGIN' | 'LANDING' | 'HOME_PAGE' | 'PENSIONER_DASHBOARD' | '
 export type Theme = 'light' | 'dark';
 
 export interface User {
-  id: string;
+  id: string; // Auth UID
+  displayId: string; // Consistent Uppercase Alphanumeric ID
   name: string;
   email: string;
   role: UserRole;

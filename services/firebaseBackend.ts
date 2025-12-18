@@ -1,13 +1,22 @@
 
 import { db, storage, auth } from './firebaseConfig';
-// Fix: Import the compat version of Firebase to access namespaced APIs and types.
 import firebase from 'firebase/compat/app';
-import 'firebase/compat/auth'; // Ensure the auth module is loaded for compat APIs
-// Fix: Remove direct named imports for AuthProviders. They are accessed via firebase.auth.
-// import { GoogleAuthProvider, EmailAuthProvider } from 'firebase/compat/auth'; 
+import 'firebase/compat/auth'; 
 import { ALCApplication, ApplicationStatus, User, UserRole } from '../types';
 import { sendNotification, getStatusMessage } from './pushNotificationService';
 import { logAudit, AuditAction } from './auditService';
+
+// Helper: Generate a consistent Capital Letter + Numeric ID
+export const generateSecureID = (length: number = 10, prefix: string = ''): string => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let result = prefix;
+  const randomValues = new Uint32Array(length);
+  window.crypto.getRandomValues(randomValues);
+  for (let i = 0; i < length; i++) {
+    result += chars[randomValues[i] % chars.length];
+  }
+  return result;
+};
 
 // Helper: Convert Base64 Data URI to Blob for robust upload
 const dataURItoBlob = (dataURI: string) => {
@@ -32,17 +41,19 @@ const dataURItoBlob = (dataURI: string) => {
 // --- Authentication ---
 
 export const registerUser = async (email: string, pass: string, name: string, role: UserRole): Promise<User> => {
-  // Fix: Use the v8 compat namespaced auth API
   const userCredential = await auth.createUserWithEmailAndPassword(email, pass);
   const uid = userCredential.user?.uid;
   if (!uid) throw new Error("User creation failed");
 
+  const displayId = generateSecureID(8, role === UserRole.PENSIONER ? 'PS-' : 'NT-');
+
   const newUser: User = {
     id: uid,
+    displayId: displayId,
     name,
     email,
     role,
-    avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`,
+    avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1e40af&color=fff`,
     fatherHusbandName: '',
     dateOfBirth: '',
     placeOfBirth: '',
@@ -60,122 +71,72 @@ export const registerUser = async (email: string, pass: string, name: string, ro
     indianPhoneNumber: '',
   };
 
-  // Save profile to Firestore, initializing all fields
-  // Fix: Use the v8 compat namespaced firestore API
   await db.collection("users").doc(uid).set(newUser);
-  
   logAudit(uid, AuditAction.LOGIN, undefined, 'User Registered');
-  
   return newUser;
 };
 
 export const loginUser = async (email: string, pass: string): Promise<User> => {
-  // Fix: Use the v8 compat namespaced auth API
   const userCredential = await auth.signInWithEmailAndPassword(email, pass);
   const uid = userCredential.user?.uid;
   if (!uid) throw new Error("Login failed");
 
-  // Fetch profile
-  // Fix: Use the v8 compat namespaced firestore API
   const userDocRef = db.collection("users").doc(uid);
   const userDoc = await userDocRef.get();
 
   if (userDoc.exists) {
     const userData = userDoc.data() as User;
     
-    logAudit(uid, AuditAction.LOGIN, undefined, 'Email Login');
-
-    // Fallback: If profile is somehow incomplete, merge with a default structure
-    if (!userData.hasOwnProperty('fatherHusbandName')) {
-        console.warn("User profile is incomplete. Merging with default structure.");
-        const defaultProfile = {
-            fatherHusbandName: '', dateOfBirth: '', placeOfBirth: '', nationality: '', serviceNumber: '', rank: '', ppoNumber: '',
-            passportNumber: '', passportIssueDate: '', passportExpiryDate: '', passportAuthority: '', overseasAddress: '',
-            indianAddress: '', phoneNumber: '', indianPhoneNumber: ''
-        };
-        // Fix: Use the v8 compat namespaced firestore API
-        await userDocRef.set(defaultProfile, { merge: true });
-        return { ...defaultProfile, ...userData } as User;
+    // Recovery: If legacy user has no displayId, generate one
+    if (!userData.displayId) {
+        const displayId = generateSecureID(8, userData.role === UserRole.PENSIONER ? 'PS-' : 'NT-');
+        await userDocRef.update({ displayId });
+        userData.displayId = displayId;
     }
-    return userData as User;
+
+    logAudit(uid, AuditAction.LOGIN, undefined, 'Email Login');
+    return userData;
   } else {
-    console.error("User authenticated but profile missing. This should have been created on registration.");
-    throw new Error("User profile not found in database.");
+    throw new Error("User profile not found.");
   }
 };
 
 export const loginWithGoogle = async (role: UserRole = UserRole.PENSIONER): Promise<User> => {
-  // Fix: Use the v8 compat namespaced auth API for GoogleAuthProvider
   const provider = new firebase.auth.GoogleAuthProvider();
-  // Request permission to send emails on user's behalf
   provider.addScope('https://www.googleapis.com/auth/gmail.send');
 
-  // FIX: Explicitly set auth_domain to the current hostname, with a fallback to the default.
-  // This is critical for sandboxed iframes where the origin can be dynamic (a GUID) or even empty.
-  // It tells the popup the correct origin to communicate with via postMessage.
   const authDomain = window.location.hostname || 'sparsh-life-certificate-nri.firebaseapp.com';
-  provider.setCustomParameters({
-    'auth_domain': authDomain
-  });
+  provider.setCustomParameters({ 'auth_domain': authDomain });
   
-  let result;
-  try {
-    // Fix: Use the v8 compat namespaced auth API
-    result = await auth.signInWithPopup(provider);
-  } catch (error: any) {
-    console.error("Google Sign-In Error:", error);
-    if (error.code === 'auth/unauthorized-domain') {
-        throw new Error(`Configuration Error: The domain "${window.location.hostname}" is not authorized. Please add it to Firebase Console > Authentication > Settings > Authorized Domains.`);
-    }
-    if (error.code === 'auth/popup-closed-by-user') {
-        throw new Error("Sign-in cancelled by user.");
-    }
-    throw error;
-  }
-  
-  // This gives you a Google Access Token. You can use it to access the Google API.
-  // Use result.credential directly in compat/v8 mode.
-  const credential = result.credential as firebase.auth.OAuthCredential;
-  const token = credential?.accessToken;
-  
-  if (token) {
-    // Ideally store this in a secure session manager. For this demo, sessionStorage is acceptable.
-    sessionStorage.setItem('google_access_token', token);
-  }
-
+  const result = await auth.signInWithPopup(provider);
   const user = result.user!;
   
   logAudit(user.uid, AuditAction.LOGIN, undefined, 'Google Login');
 
-  // Fix: Use the v8 compat namespaced firestore API
   const userDocRef = db.collection("users").doc(user.uid);
   const userDoc = await userDocRef.get();
   
   if (userDoc.exists) {
     const userData = userDoc.data() as User;
-     if (!userData.hasOwnProperty('fatherHusbandName')) {
-        const defaultProfile = {
-            fatherHusbandName: '', dateOfBirth: '', placeOfBirth: '', nationality: '', serviceNumber: '', rank: '', ppoNumber: '',
-            passportNumber: '', passportIssueDate: '', passportExpiryDate: '', passportAuthority: '', overseasAddress: '',
-            indianAddress: '', phoneNumber: '', indianPhoneNumber: ''
-        };
-        // Fix: Use the v8 compat namespaced firestore API
-        await userDocRef.set(defaultProfile, { merge: true });
-        return { ...defaultProfile, ...userData } as User;
+    if (!userData.displayId) {
+        const displayId = generateSecureID(8, userData.role === UserRole.PENSIONER ? 'PS-' : 'NT-');
+        await userDocRef.update({ displayId });
+        userData.displayId = displayId;
     }
     return userData;
   } else {
+    const displayId = generateSecureID(8, role === UserRole.PENSIONER ? 'PS-' : 'NT-');
     const newUser: User = {
         id: user.uid,
+        displayId: displayId,
         name: user.displayName || "Unknown",
         email: user.email || "",
         role: role, 
-        avatar: user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || "User")}&background=random}`,
+        avatar: user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || "User")}&background=1e40af&color=fff`,
         fatherHusbandName: '', dateOfBirth: '', placeOfBirth: '', nationality: '', serviceNumber: '', rank: '', ppoNumber: '',
         passportNumber: '', passportIssueDate: '', passportExpiryDate: '', passportAuthority: '', overseasAddress: '',
         indianAddress: '', phoneNumber: '', indianPhoneNumber: ''
     };
-    // Fix: Use the v8 compat namespaced firestore API
     await userDocRef.set(newUser);
     return newUser;
   }
@@ -183,366 +144,168 @@ export const loginWithGoogle = async (role: UserRole = UserRole.PENSIONER): Prom
 
 export const linkGoogleAccount = async (): Promise<string> => {
     const user = auth.currentUser;
-    if (!user) {
-        throw new Error("No user is currently signed in to link an account.");
-    }
+    if (!user) throw new Error("No user signed in.");
 
-    // Fix: Use the explicitly imported GoogleAuthProvider
     const provider = new firebase.auth.GoogleAuthProvider();
     provider.addScope('https://www.googleapis.com/auth/gmail.send');
-
-    // FIX: Explicitly set auth_domain to the current hostname, with a fallback to the default.
-    // This is critical for sandboxed iframes where the origin can be dynamic (a GUID) or even empty.
-    // It tells the popup the correct origin to communicate with via postMessage.
     const authDomain = window.location.hostname || 'sparsh-life-certificate-nri.firebaseapp.com';
-    provider.setCustomParameters({
-      'auth_domain': authDomain
-    });
+    provider.setCustomParameters({ 'auth_domain': authDomain });
 
     try {
-        // Fix: Use the v8 compat namespaced auth API
         const result = await user.linkWithPopup(provider);
-        // Use result.credential directly in compat/v8 mode.
         const credential = result.credential as firebase.auth.OAuthCredential;
         const token = credential?.accessToken;
-        
-        logAudit(user.uid, AuditAction.LINK_GOOGLE, undefined, 'Linked Google Account for Email access');
-
+        logAudit(user.uid, AuditAction.LINK_GOOGLE, undefined, 'Linked Google Account');
         if (token) {
             sessionStorage.setItem('google_access_token', token);
             return token;
-        } else {
-            throw new Error("Could not retrieve access token after linking.");
-        }
+        } else throw new Error("No token returned.");
     } catch (error: any) {
-        console.error("Error linking Google account:", error);
-
-        // RECOVERY LOGIC:
-        // If the credential is already in use by another user, we cannot link it to the current profile.
-        // HOWEVER, the authentication WAS successful, and we have the credentials needed to send the email.
-        // We can extract the accessToken from the error object and proceed.
         if (error.code === 'auth/credential-already-in-use') {
              const credential = error.credential as firebase.auth.OAuthCredential;
-             if (credential && credential.accessToken) {
-                 // Successfully recovered token from the error
+             if (credential?.accessToken) {
                  sessionStorage.setItem('google_access_token', credential.accessToken);
                  return credential.accessToken;
              }
-             throw new Error("This Google account is linked to another user. Please sign out and sign in with that account.");
         }
-
-        if (error.code === 'auth/popup-closed-by-user') {
-            throw new Error("Authorization popup was closed before completion.");
-        }
-        if (error.code === 'auth/unauthorized-domain') {
-             throw new Error(`Configuration Error: The domain "${window.location.hostname}" is not authorized. Please add it to Firebase Console > Authentication > Settings > Authorized Domains.`);
-        }
-        throw new Error("Failed to link Google Account. Please try again.");
+        throw error;
     }
 };
 
 export const changeUserPassword = async (currentPassword: string, newPassword: string): Promise<void> => {
   const user = auth.currentUser;
-  if (!user || !user.email) {
-    throw new Error("No user is currently signed in.");
-  }
-
-  // Re-authenticate the user as a security measure
-  // Fix: Use the explicitly imported EmailAuthProvider
+  if (!user?.email) throw new Error("No user signed in.");
   const credential = firebase.auth.EmailAuthProvider.credential(user.email, currentPassword);
-  
-  try {
-    // Fix: Use the v8 compat namespaced auth API
-    await user.reauthenticateWithCredential(credential);
-  } catch (error: any) {
-    console.error("Re-authentication failed", error);
-    if (error.code === 'auth/wrong-password') {
-        throw new Error("The current password you entered is incorrect.");
-    }
-    throw new Error("Re-authentication failed. Please try again.");
-  }
-
-  // If re-authentication is successful, update the password
-  try {
-    // Fix: Use the v8 compat namespaced auth API
-    await user.updatePassword(newPassword);
-  } catch(error: any) {
-    console.error("Password update failed", error);
-     if (error.code === 'auth/weak-password') {
-        throw new Error("Password is too weak. It must be at least 6 characters long.");
-    }
-    throw new Error("Failed to update password.");
-  }
+  await user.reauthenticateWithCredential(credential);
+  await user.updatePassword(newPassword);
 };
 
 export const updateUserProfile = async (userId: string, data: Partial<User>): Promise<void> => {
-  // Fix: Use the v8 compat namespaced firestore API
   const userRef = db.collection("users").doc(userId);
   await userRef.update(data);
 };
 
-// --- GDPR & Data Export ---
-
 export const exportUserData = async (userId: string): Promise<object> => {
-  logAudit(userId, AuditAction.EXPORT_DATA, undefined, 'User requested data export');
-  
+  logAudit(userId, AuditAction.EXPORT_DATA, undefined, 'Exported Data');
   const userDoc = await db.collection("users").doc(userId).get();
   const userData = userDoc.exists ? userDoc.data() : null;
-
   const appsSnapshot = await db.collection("applications").where("pensionerId", "==", userId).get();
   const applications = appsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-  return {
-    profile: userData,
-    applications: applications,
-    exportDate: new Date().toISOString()
-  };
+  return { profile: userData, applications, exportDate: new Date().toISOString() };
 };
 
 export const deleteUserAccount = async (): Promise<void> => {
   const user = auth.currentUser;
   if (!user) throw new Error("No user logged in");
-  
   const userId = user.uid;
-  logAudit(userId, AuditAction.DELETE_ACCOUNT, undefined, 'User initiated account deletion');
-
-  // 1. Delete Firestore Profile
+  logAudit(userId, AuditAction.DELETE_ACCOUNT, undefined, 'Initiated account deletion');
   await db.collection("users").doc(userId).delete();
-  
-  // 2. Delete Auth Account
-  // Note: This requires recent login. If it fails, the UI should prompt re-auth.
   await user.delete();
 };
 
-
 // --- Applications ---
 
-// Track initial load to prevent spamming notifications on first mount
-let isInitialLoadMap: Record<string, boolean> = {};
-
-// Fix: Use firebase.Unsubscribe for the return type.
 export const getApplications = (role: UserRole, userId: string, onUpdate: (apps: ALCApplication[]) => void): (() => void) => {
-  // Fix: Use the v8 compat namespaced firestore API for querying
   let q: firebase.firestore.Query = db.collection("applications");
-  
-  const listenerKey = `${role}_${userId}`;
-  isInitialLoadMap[listenerKey] = true;
-
   if (role === UserRole.PENSIONER) {
     q = q.where("pensionerId", "==", userId);
   } else {
-    // Notaries see their completed work and the global pending queue.
-    q = q.where("status", "in", [
-        ApplicationStatus.SUBMITTED, 
-        ApplicationStatus.ATTESTED, 
-        ApplicationStatus.REJECTED
-    ]);
+    q = q.where("status", "in", [ApplicationStatus.SUBMITTED, ApplicationStatus.ATTESTED, ApplicationStatus.REJECTED]);
   }
 
-  // Fix: Use the v8 compat namespaced firestore API for snapshots
   const unsubscribe = q.onSnapshot((querySnapshot) => {
-    
-    // --- Notification Logic ---
-    // We check docChanges to see what actually changed in real-time
-    if (!isInitialLoadMap[listenerKey]) {
-        querySnapshot.docChanges().forEach((change) => {
-            if (change.type === 'modified') {
-                const newData = change.doc.data() as ALCApplication;
-                // We use the ID to generate the message
-                const { title, body } = getStatusMessage(newData.status, change.doc.id);
-                sendNotification(title, body);
-            } else if (change.type === 'added') {
-                // Optional: Notify notary when a new application appears (if role is Notary)
-                if (role === UserRole.NOTARY) {
-                    const newData = change.doc.data() as ALCApplication;
-                    if (newData.status === ApplicationStatus.SUBMITTED) {
-                         sendNotification("New Application", `New request received from ${newData.pensionerName}`);
-                    }
-                }
-            }
-        });
-    }
-    
-    // Disable initial load flag after the first snapshot processes
-    if (isInitialLoadMap[listenerKey]) {
-        isInitialLoadMap[listenerKey] = false;
-    }
-    // --------------------------
-
     let apps: ALCApplication[] = [];
     querySnapshot.forEach((docSnap) => {
-      const data = docSnap.data();
-      const app = { id: docSnap.id, ...(data as any) } as ALCApplication;
-      
-      // For Notaries, filter down to only their processed items or pending items
+      const app = { id: docSnap.id, ...docSnap.data() } as ALCApplication;
       if (role === UserRole.NOTARY) {
-        if (app.status === ApplicationStatus.SUBMITTED || app.notaryId === userId) {
-            apps.push(app);
-        }
-      } else {
-        apps.push(app);
-      }
+        if (app.status === ApplicationStatus.SUBMITTED || app.notaryId === userId) apps.push(app);
+      } else apps.push(app);
     });
-    
-    // Sort by most recently submitted/processed first
-    const sortedApps = apps.sort((a, b) => {
-        const dateA = new Date(a.attestationDate || a.submittedDate).getTime();
-        const dateB = new Date(b.attestationDate || b.submittedDate).getTime();
-        return dateB - dateA;
-    });
-    onUpdate(sortedApps);
-  }, (error) => {
-    console.error("Error listening to applications:", error);
+    onUpdate(apps.sort((a, b) => new Date(b.submittedDate).getTime() - new Date(a.submittedDate).getTime()));
   });
-
   return unsubscribe;
 };
 
 export const getApplicationsForReport = async (notaryId: string): Promise<ALCApplication[]> => {
-  // Fix: Use the v8 compat namespaced firestore API
-  const appsRef = db.collection("applications");
-  
-  const q = appsRef
+  const querySnapshot = await db.collection("applications")
     .where("notaryId", "==", notaryId)
-    .where("status", "in", [ApplicationStatus.ATTESTED, ApplicationStatus.REJECTED]);
-
-  const querySnapshot = await q.get();
-  const apps: ALCApplication[] = [];
-  querySnapshot.forEach((docSnap) => {
-    apps.push({ id: docSnap.id, ...docSnap.data() } as ALCApplication);
-  });
-  
-  // Sort by attestation date, most recent first.
-  return apps.sort((a, b) => {
-    const dateA = new Date(a.attestationDate || 0).getTime();
-    const dateB = new Date(b.attestationDate || 0).getTime();
-    return dateB - dateA;
-  });
+    .where("status", "in", [ApplicationStatus.ATTESTED, ApplicationStatus.REJECTED])
+    .get();
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ALCApplication));
 };
 
 export const createApplication = async (appData: Omit<ALCApplication, 'id' | 'status' | 'submittedDate'>): Promise<ALCApplication> => {
-  try {
     const timestamp = new Date().toISOString();
     const userId = appData.pensionerId;
+    const appId = generateSecureID(10, 'ALC-');
     
-    console.log("Starting application creation for user:", userId);
-
-    // 1. Upload Signature
     let sigUrl = '';
     if (appData.pensionerSignature) {
-        // Fix: Use the v8 compat namespaced storage API
         const sigRef = storage.ref(`signatures/${userId}/${Date.now()}_sig.png`);
         const sigBlob = dataURItoBlob(appData.pensionerSignature);
         if (sigBlob) {
-          const metadata = { contentType: 'image/png' };
-          await sigRef.put(sigBlob, metadata);
+          await sigRef.put(sigBlob, { contentType: 'image/png' });
           sigUrl = await sigRef.getDownloadURL();
         }
     }
 
-    // 2. Upload Documents
     const processedDocs: any[] = [];
     for (const docItem of appData.documents) {
-        // Fix: Use the v8 compat namespaced storage API
         const fileRef = storage.ref(`documents/${userId}/${Date.now()}_${docItem.name}`);
-        let downloadUrl = '';
-        
         const fileToUpload = docItem.file ? docItem.file : dataURItoBlob(docItem.url);
-
         if (fileToUpload) {
-            const metadata = { contentType: docItem.type };
-            await fileRef.put(fileToUpload, metadata);
-            downloadUrl = await fileRef.getDownloadURL();
+            await fileRef.put(fileToUpload, { contentType: docItem.type });
+            const downloadUrl = await fileRef.getDownloadURL();
+            processedDocs.push({ ...docItem, url: downloadUrl, file: undefined });
         }
-
-        processedDocs.push({
-            id: docItem.id, name: docItem.name, type: docItem.type, url: downloadUrl || docItem.url 
-        });
     }
 
-    // 3. Save to Firestore
     const newAppPayload = {
       ...appData,
       pensionerSignature: sigUrl,
       documents: processedDocs,
       status: ApplicationStatus.SUBMITTED,
       submittedDate: timestamp,
-      history: [{ status: ApplicationStatus.SUBMITTED, timestamp: timestamp, details: 'Application submitted successfully' }]
+      history: [{ status: ApplicationStatus.SUBMITTED, timestamp: timestamp, details: 'Application submitted' }]
     };
 
-    // Fix: Use the v8 compat namespaced firestore API
-    const docRef = await db.collection("applications").add(newAppPayload);
-    logAudit(userId, AuditAction.CREATE_APPLICATION, docRef.id, 'New Application Submitted');
-    return { id: docRef.id, ...newAppPayload } as ALCApplication;
-
-  } catch (error: any) {
-    console.error("Error creating application:", error);
-    if (error.code === 'storage/unauthorized') {
-        throw new Error("File Upload Failed: Permission denied. Please check Storage Rules in Firebase.");
-    }
-    if (error.code === 'storage/retry-limit-exceeded') {
-        throw new Error("Network/CORS Error: Please check 'cors.json' configuration in README.");
-    }
-    throw error;
-  }
+    await db.collection("applications").doc(appId).set(newAppPayload);
+    logAudit(userId, AuditAction.CREATE_APPLICATION, appId, 'Application Submitted');
+    return { id: appId, ...newAppPayload } as ALCApplication;
 };
 
-export const updateApplicationStatus = async (
-    appId: string, 
-    status: ApplicationStatus, 
-    notaryData?: Partial<ALCApplication>
-): Promise<void> => {
-    // Fix: Use the v8 compat namespaced firestore API
+export const updateApplicationStatus = async (appId: string, status: ApplicationStatus, notaryData?: Partial<ALCApplication>): Promise<void> => {
     const appRef = db.collection("applications").doc(appId);
     const timestamp = new Date().toISOString();
-    
     let finalNotaryData = { ...notaryData };
 
-    if (notaryData?.notarySignature && notaryData.notarySignature.startsWith('data:') && notaryData.notaryId) {
-        // Fix: Use the v8 compat namespaced storage API
+    if (notaryData?.notarySignature?.startsWith('data:') && notaryData.notaryId) {
         const sigRef = storage.ref(`signatures/${notaryData.notaryId}/${Date.now()}_${appId}.png`);
         const sigBlob = dataURItoBlob(notaryData.notarySignature);
         if (sigBlob) {
-            const metadata = { contentType: 'image/png' };
-            await sigRef.put(sigBlob, metadata);
-            const url = await sigRef.getDownloadURL();
-            finalNotaryData.notarySignature = url;
+            await sigRef.put(sigBlob, { contentType: 'image/png' });
+            finalNotaryData.notarySignature = await sigRef.getDownloadURL();
         }
     }
 
-    // Fix: Use the v8 compat namespaced firestore API
     const snap = await appRef.get();
     const currentHistory = snap.exists ? snap.data()?.history || [] : [];
     
-    let details = '';
-    if (status === ApplicationStatus.ATTESTED) details = `Attested by Notary: ${notaryData?.notaryName || 'Unknown'}`;
-    else if (status === ApplicationStatus.REJECTED) details = `Rejected by Notary: ${notaryData?.rejectionReason || 'No reason provided'}`;
-    else if (status === ApplicationStatus.SENT_TO_SPARSH) details = 'Transmitted to SPARSH Defense Pension System';
-
-    // Fix: Use the v8 compat namespaced firestore API
     await appRef.update({
         status,
         ...finalNotaryData,
-        history: [ ...currentHistory, { status, timestamp, details } ]
+        history: [ ...currentHistory, { status, timestamp, details: `Status updated to ${status}` } ]
     });
     
-    // Log audit
     const currentUser = auth.currentUser;
-    if(currentUser) {
-        logAudit(currentUser.uid, AuditAction.UPDATE_STATUS, appId, `Status updated to ${status}`);
-    }
+    if(currentUser) logAudit(currentUser.uid, AuditAction.UPDATE_STATUS, appId, `Updated to ${status}`);
 };
 
 export const getApplicationById = async (id: string): Promise<ALCApplication | undefined> => {
-    // Fix: Use the v8 compat namespaced firestore API
-    const docRef = db.collection("applications").doc(id);
-    const snap = await docRef.get();
+    const snap = await db.collection("applications").doc(id).get();
     if (snap.exists) {
         const app = { id: snap.id, ...snap.data() } as ALCApplication;
-        const currentUser = auth.currentUser;
-        if(currentUser) {
-             logAudit(currentUser.uid, AuditAction.VIEW_APPLICATION, id, 'Viewed Application Details');
-        }
+        if(auth.currentUser) logAudit(auth.currentUser.uid, AuditAction.VIEW_APPLICATION, id, 'Viewed Application');
         return app;
     }
     return undefined;

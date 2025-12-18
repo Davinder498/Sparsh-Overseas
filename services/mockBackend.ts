@@ -3,6 +3,8 @@ import { ALCApplication, ApplicationStatus, User, UserRole } from '../types';
 // Mock Data
 const MOCK_PENSIONER: User = {
   id: 'u1',
+  // Added missing displayId property
+  displayId: 'PS-MOCK101',
   name: 'Subedar Rajinder Singh (Retd)',
   email: 'rajinder.singh@example.com',
   role: UserRole.PENSIONER,
@@ -28,6 +30,8 @@ const MOCK_PENSIONER: User = {
 
 const MOCK_NOTARY: User = {
   id: 'u2',
+  // Added missing displayId property
+  displayId: 'NT-MOCK202',
   name: 'Sarah Jenkins, JD',
   email: 'sarah.notary@example.com',
   role: UserRole.NOTARY,
@@ -108,6 +112,8 @@ export const registerUser = async (email: string, pass: string, name: string, ro
       setTimeout(() => {
         resolve({
           id: 'u-' + Math.floor(Math.random() * 10000),
+          // Added missing displayId property
+          displayId: (role === UserRole.PENSIONER ? 'PS-' : 'NT-') + Math.floor(Math.random() * 10000),
           name,
           email,
           role,

@@ -97,7 +97,8 @@ export const generateLifeCertificate = functions
           .sub-label { width: 160px; color: #4b5563; }
           .signatures { margin-top: 50px; display: flex; justify-content: space-between; align-items: flex-end; }
           .sig-box { width: 40%; display: flex; flex-direction: column; align-items: center; }
-          .sig-img { height: 70px; object-fit: contain; margin-bottom: 10px; }
+          .sig-frame { border: 2px solid #1f2937; background-color: #ffffff; width: 100%; height: 90px; display: flex; align-items: center; justify-content: center; margin-bottom: 8px; }
+          .sig-img { height: 70px; object-fit: contain; }
           .sig-line { border-top: 1px solid #9ca3af; width: 100%; text-align: center; padding-top: 8px; font-weight: 600; font-size: 14px; color: #374151; }
           .footer { position: absolute; bottom: 20px; left: 40px; right: 40px; border-top: 1px solid #e5e7eb; padding-top: 10px; display: flex; justify-content: space-between; font-size: 10px; color: #9ca3af; text-transform: uppercase; }
         </style>
@@ -198,11 +199,15 @@ export const generateLifeCertificate = functions
 
           <div class="signatures">
             <div class="sig-box">
-              ${appData?.pensionerSignature ? `<img src="${appData.pensionerSignature}" class="sig-img" />` : '<div style="height:70px"></div>'}
+              <div class="sig-frame">
+                ${appData?.pensionerSignature ? `<img src="${appData.pensionerSignature}" class="sig-img" />` : ''}
+              </div>
               <div class="sig-line">Signature of Applicant</div>
             </div>
             <div class="sig-box">
-              ${appData?.notarySignature ? `<img src="${appData.notarySignature}" class="sig-img" />` : '<div style="height:70px"></div>'}
+              <div class="sig-frame">
+                ${appData?.notarySignature ? `<img src="${appData.notarySignature}" class="sig-img" />` : ''}
+              </div>
               <div class="sig-line">
                 Authorised Official / Notary<br/>
                 <span style="font-weight: normal; font-size: 12px;">${appData?.notaryName || ""}</span>

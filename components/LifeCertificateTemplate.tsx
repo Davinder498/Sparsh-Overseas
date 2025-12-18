@@ -123,7 +123,7 @@ const LifeCertificateTemplate: React.ForwardRefRenderFunction<HTMLDivElement, Pr
 
       <div className="mt-12 flex flex-row justify-between items-end gap-8 pb-8">
         <div className="flex flex-col items-center justify-end w-5/12">
-            <div className="h-20 p-2 rounded bg-gray-50 mb-2 w-full flex items-center justify-center">
+            <div className="h-20 p-2 border-2 border-gray-800 bg-white mb-2 w-full flex items-center justify-center">
                 {data.pensionerSignature && (
                     <img src={data.pensionerSignature} alt="Applicant Signature" className="h-16 object-contain" />
                 )}
@@ -134,7 +134,7 @@ const LifeCertificateTemplate: React.ForwardRefRenderFunction<HTMLDivElement, Pr
         </div>
 
         <div className="flex flex-col items-center justify-end w-5/12">
-            <div className="h-24 p-2 rounded bg-gray-50 mb-2 w-full flex items-center justify-center">
+            <div className="h-24 p-2 border-2 border-gray-800 bg-white mb-2 w-full flex items-center justify-center">
                 {(data.notarySignature || currentNotarySignature) ? (
                     <img src={data.notarySignature || currentNotarySignature || ''} alt="Notary Seal" className="h-full object-contain" />
                 ) : (

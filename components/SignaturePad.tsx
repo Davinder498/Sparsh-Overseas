@@ -17,15 +17,13 @@ const SignaturePad: React.FC<SignaturePadProps> = ({ onSave, label = "Sign Here"
   useEffect(() => {
     const canvas = canvasRef.current;
     if (canvas) {
-      // Handle resizing for responsiveness could go here
       canvas.width = canvas.offsetWidth;
       canvas.height = canvas.offsetHeight;
-      
       const ctx = canvas.getContext('2d');
       if (ctx) {
         ctx.lineWidth = 2;
         ctx.lineCap = 'round';
-        ctx.strokeStyle = '#000000'; // Signature color is always black
+        ctx.strokeStyle = '#1a1a1a'; // Official dark charcoal ink
       }
     }
   }, []);
@@ -33,7 +31,6 @@ const SignaturePad: React.FC<SignaturePadProps> = ({ onSave, label = "Sign Here"
   const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
     const ctx = getContext();
     if (!ctx || !canvasRef.current) return;
-
     setIsDrawing(true);
     setHasSignature(true);
     const { offsetX, offsetY } = getCoordinates(e);
@@ -45,7 +42,6 @@ const SignaturePad: React.FC<SignaturePadProps> = ({ onSave, label = "Sign Here"
     if (!isDrawing) return;
     const ctx = getContext();
     if (!ctx || !canvasRef.current) return;
-
     const { offsetX, offsetY } = getCoordinates(e);
     ctx.lineTo(offsetX, offsetY);
     ctx.stroke();
@@ -54,15 +50,12 @@ const SignaturePad: React.FC<SignaturePadProps> = ({ onSave, label = "Sign Here"
   const stopDrawing = () => {
     if (!isDrawing) return;
     setIsDrawing(false);
-    if (canvasRef.current) {
-        onSave(canvasRef.current.toDataURL());
-    }
+    if (canvasRef.current) onSave(canvasRef.current.toDataURL());
   };
 
   const getCoordinates = (e: React.MouseEvent | React.TouchEvent) => {
     const canvas = canvasRef.current;
     if (!canvas) return { offsetX: 0, offsetY: 0 };
-
     let clientX, clientY;
     if ('touches' in e) {
       clientX = e.touches[0].clientX;
@@ -71,12 +64,8 @@ const SignaturePad: React.FC<SignaturePadProps> = ({ onSave, label = "Sign Here"
       clientX = (e as React.MouseEvent).clientX;
       clientY = (e as React.MouseEvent).clientY;
     }
-
     const rect = canvas.getBoundingClientRect();
-    return {
-      offsetX: clientX - rect.left,
-      offsetY: clientY - rect.top
-    };
+    return { offsetX: clientX - rect.left, offsetY: clientY - rect.top };
   };
 
   const clear = () => {
@@ -86,6 +75,9 @@ const SignaturePad: React.FC<SignaturePadProps> = ({ onSave, label = "Sign Here"
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       setHasSignature(false);
       onSave('');
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = '#1a1a1a';
     }
   };
 
@@ -93,11 +85,7 @@ const SignaturePad: React.FC<SignaturePadProps> = ({ onSave, label = "Sign Here"
     <div className="w-full">
       <div className="flex justify-between items-center mb-1">
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{label}</label>
-        <button 
-            type="button"
-            onClick={clear}
-            className="text-xs text-red-600 dark:text-red-400 flex items-center hover:underline"
-        >
+        <button type="button" onClick={clear} className="text-xs text-red-600 dark:text-red-400 flex items-center hover:underline">
             <Eraser className="w-3 h-3 mr-1" /> Clear
         </button>
       </div>

@@ -29,7 +29,6 @@ export default function PensionerDashboard({ user, onBack }: Props) {
   const [submissionStatus, setSubmissionStatus] = useState<SubmissionStatus>('IDLE');
   const [errorMessage, setErrorMessage] = useState('');
   
-  // We keep the template for PREVIEW only. Generation happens on server.
   const certificateRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -57,17 +56,12 @@ export default function PensionerDashboard({ user, onBack }: Props) {
       
       try {
           notifier.addToast("Generating PDF on secure server...", "info");
-          
-          // 1. Call Cloud Function
           const { url } = await generateServerSidePDF(selectedApp.id);
-          
-          // 2. Trigger Browser Download
           const link = document.createElement('a');
           link.href = url;
           link.download = `Life-Certificate-${selectedApp.id}.pdf`;
-          link.target = "_blank"; // Open in new tab if download fails
+          link.target = "_blank";
           link.click();
-          
           notifier.addToast("PDF Download started.", "success");
       } catch (error: any) {
           console.error(error);
@@ -83,27 +77,20 @@ export default function PensionerDashboard({ user, onBack }: Props) {
         await linkGoogleAccount();
     } catch (error: any) {
         setErrorMessage(error.message || "Failed to authorize Google account.");
-        // Rethrow to let the modal know authorization failed
         throw error;
     }
   };
 
   const handleAutoSubmit = async () => {
     if (!selectedApp) return;
-    
     try {
         setSubmissionStatus('GENERATING');
-        
-        // 1. Generate PDF on Server
         const { url } = await generateServerSidePDF(selectedApp.id);
-        
         setSubmissionStatus('PREPARING');
-        // 2. Download the Blob from the URL so we can attach it to email
         const pdfBlob = await downloadPDFBlob(url);
         const base64Data = await blobToBase64(pdfBlob);
 
         setSubmissionStatus('SENDING');
-
         const subject = `Annual Identification - ${selectedApp.rank || 'Rank N/A'} ${selectedApp.pensionerName} - SPARSH PPO No ${selectedApp.ppoNumber}`;
         const body = `Dear SPARSH Team,
 
@@ -134,7 +121,6 @@ ${selectedApp.pensionerName}
 
         await updateApplicationStatus(selectedApp.id, ApplicationStatus.SENT_TO_SPARSH);
         setSubmissionStatus('SUCCESS');
-        
         setTimeout(() => {
             setShowSparshModal(false);
             setSubmissionStatus('IDLE');
@@ -178,11 +164,7 @@ ${selectedApp.pensionerName}
                 isOpen={showSparshModal}
                 onClose={() => setShowSparshModal(false)}
                 title="Secure Submission to SPARSH"
-                description={
-                    <p>
-                        This will generate a <strong>High-Fidelity PDF</strong> on our secure server and email it to <strong>{SPARSH_SERVICE_EMAIL}</strong>.
-                    </p>
-                }
+                description={<p>This will generate a <strong>High-Fidelity PDF</strong> on our secure server and email it to <strong>{SPARSH_SERVICE_EMAIL}</strong>.</p>}
                 onAuthorize={handleAuthorize}
                 onSubmit={handleAutoSubmit}
                 submissionStatus={submissionStatus}
@@ -191,7 +173,7 @@ ${selectedApp.pensionerName}
             <div className="bg-white dark:bg-gray-800 shadow sticky top-16 z-20 border-b dark:border-gray-700">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
                     <div className="flex items-center">
-                        <button onClick={() => setSelectedApp(null)} className="mr-4 text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
+                        <button onClick={() => setSelectedApp(null)} className="mr-4 text-gray-500 dark:text-gray-300 hover:text-primary transition-colors">
                             <ArrowLeft className="h-6 w-6"/>
                         </button>
                         <div>
@@ -212,10 +194,6 @@ ${selectedApp.pensionerName}
                              </h3>
                              <span className="text-xs bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-1 rounded">View Only</span>
                         </div>
-                        {/* 
-                            NOTE: This component is now only for PREVIEW. 
-                            The actual PDF is generated on the server using data from Firestore.
-                        */}
                         <div className="bg-white dark:bg-gray-800 rounded shadow-xl overflow-hidden border border-gray-200 dark:border-gray-700">
                             <LifeCertificateTemplate ref={certificateRef} data={selectedApp} />
                         </div>
@@ -226,11 +204,11 @@ ${selectedApp.pensionerName}
                             <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Submission Status</h3>
                             
                             {selectedApp.status === ApplicationStatus.SUBMITTED && (
-                                <div className="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-700/50 rounded-md p-4 flex items-start">
-                                    <Clock className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mt-0.5 mr-3 flex-shrink-0" />
+                                <div className="bg-primary-soft dark:bg-primary/20 border border-primary/20 dark:border-primary/40 rounded-md p-4 flex items-start">
+                                    <Clock className="h-5 w-5 text-primary mt-0.5 mr-3 flex-shrink-0" />
                                     <div>
-                                        <h4 className="text-sm font-medium text-yellow-800 dark:text-yellow-200">Pending Notary Attestation</h4>
-                                        <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
+                                        <h4 className="text-sm font-medium text-primary dark:text-accent">Pending Notary Attestation</h4>
+                                        <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">
                                             Your certificate is currently being reviewed by a notary.
                                         </p>
                                     </div>
@@ -252,14 +230,14 @@ ${selectedApp.pensionerName}
                                         <button 
                                             onClick={() => handleDownloadPdf()}
                                             disabled={isDownloading}
-                                            className="w-full inline-flex justify-center items-center px-4 py-3 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-primary bg-blue-50 dark:bg-blue-900/30 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 shadow-sm disabled:opacity-50 transition-all"
+                                            className="btn-secondary-standard w-full"
                                         >
                                             {isDownloading ? <Loader2 className="h-4 w-4 mr-2 animate-spin"/> : <Download className="h-4 w-4 mr-2" />}
                                             {isDownloading ? 'Processing...' : 'Download Official PDF'}
                                         </button>
                                         <button 
                                             onClick={openModal}
-                                            className="w-full inline-flex justify-center items-center px-4 py-3 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-blue-800 shadow-sm disabled:opacity-50 transition-all"
+                                            className="btn-primary-standard w-full"
                                         >
                                             <Send className="h-4 w-4 mr-2" />
                                             Submit to SPARSH (Auto)
@@ -270,11 +248,11 @@ ${selectedApp.pensionerName}
 
                             {selectedApp.status === ApplicationStatus.SENT_TO_SPARSH && (
                                 <div className="space-y-4">
-                                    <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700/50 rounded-md p-4 flex items-start">
-                                        <CheckCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 mr-3 flex-shrink-0" />
+                                    <div className="bg-primary-soft dark:bg-primary/20 border border-primary/20 dark:border-primary/40 rounded-md p-4 flex items-start">
+                                        <CheckCircle className="h-5 w-5 text-primary mt-0.5 mr-3 flex-shrink-0" />
                                         <div>
-                                            <h4 className="text-sm font-medium text-blue-800 dark:text-blue-200">Submitted to SPARSH</h4>
-                                            <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                                            <h4 className="text-sm font-medium text-primary dark:text-accent">Submitted to SPARSH</h4>
+                                            <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">
                                                 Your ALC has been transmitted. Check your "Sent Items" in Gmail for proof.
                                             </p>
                                         </div>
@@ -282,7 +260,7 @@ ${selectedApp.pensionerName}
                                     <button 
                                         onClick={() => handleDownloadPdf()}
                                         disabled={isDownloading}
-                                        className="w-full inline-flex justify-center items-center px-4 py-3 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-primary bg-blue-50 dark:bg-blue-900/30 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 shadow-sm disabled:opacity-50 transition-all"
+                                        className="btn-secondary-standard w-full"
                                     >
                                         {isDownloading ? <Loader2 className="h-4 w-4 mr-2 animate-spin"/> : <Download className="h-4 w-4 mr-2" />}
                                         {isDownloading ? 'Processing...' : 'Download Official PDF'}
@@ -319,20 +297,17 @@ ${selectedApp.pensionerName}
                                 <ul className="-mb-8">
                                     {(selectedApp.history || []).map((event, eventIdx) => {
                                         const isLast = eventIdx === (selectedApp.history || []).length - 1;
-                                        
                                         let Icon = Clock;
                                         let bgColor = 'bg-gray-400';
-                                        if (event.status === ApplicationStatus.SUBMITTED) { Icon = FileText; bgColor = 'bg-blue-500'; } 
-                                        else if (event.status === ApplicationStatus.ATTESTED) { Icon = CheckCircle; bgColor = 'bg-green-500'; } 
-                                        else if (event.status === ApplicationStatus.SENT_TO_SPARSH) { Icon = Send; bgColor = 'bg-indigo-500'; } 
-                                        else if (event.status === ApplicationStatus.REJECTED) { Icon = X; bgColor = 'bg-red-500'; }
+                                        if (event.status === ApplicationStatus.SUBMITTED) { Icon = FileText; bgColor = 'bg-primary'; } 
+                                        else if (event.status === ApplicationStatus.ATTESTED) { Icon = CheckCircle; bgColor = 'bg-green-600'; } 
+                                        else if (event.status === ApplicationStatus.SENT_TO_SPARSH) { Icon = Send; bgColor = 'bg-secondary'; } 
+                                        else if (event.status === ApplicationStatus.REJECTED) { Icon = X; bgColor = 'bg-red-600'; }
 
                                         return (
                                             <li key={eventIdx}>
                                                 <div className="relative pb-8">
-                                                    {!isLast && (
-                                                        <span className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200 dark:bg-gray-700" aria-hidden="true" />
-                                                    )}
+                                                    {!isLast && <span className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200 dark:bg-gray-700" aria-hidden="true" />}
                                                     <div className="relative flex space-x-3">
                                                         <div>
                                                             <span className={`h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-white dark:ring-gray-800 ${bgColor}`}>
@@ -344,9 +319,7 @@ ${selectedApp.pensionerName}
                                                                 <p className="text-sm font-medium text-gray-900 dark:text-gray-100 uppercase">
                                                                     {event.status.replace(/_/g, ' ')}
                                                                 </p>
-                                                                {event.details && (
-                                                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{event.details}</p>
-                                                                )}
+                                                                {event.details && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{event.details}</p>}
                                                             </div>
                                                             <div className="text-right text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
                                                                 <time dateTime={event.timestamp}>
@@ -363,19 +336,6 @@ ${selectedApp.pensionerName}
                                 </ul>
                             </div>
                         </div>
-
-                        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border dark:border-gray-700">
-                            <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">Supporting Documents</h3>
-                             <div className="space-y-2">
-                                {selectedApp.documents.map((doc, idx) => (
-                                    <div key={idx} className="flex items-center p-2 bg-gray-50 dark:bg-gray-900/50 rounded border border-gray-100 dark:border-gray-700">
-                                        <FileText className="h-4 w-4 text-gray-400 mr-2" />
-                                        <span className="text-xs text-gray-600 dark:text-gray-300 truncate flex-1">{doc.name}</span>
-                                        <a href={doc.url} target="_blank" rel="noreferrer" className="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-xs">View</a>
-                                    </div>
-                                ))}
-                             </div>
-                        </div>
                      </div>
                 </div>
             </div>
@@ -388,7 +348,7 @@ ${selectedApp.pensionerName}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 sm:gap-0">
         <div className="flex items-center">
             {onBack && (
-                <button onClick={onBack} className="mr-4 text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">
+                <button onClick={onBack} className="mr-4 text-gray-500 dark:text-gray-300 hover:text-primary dark:hover:text-accent p-2 rounded-full hover:bg-primary-soft dark:hover:bg-gray-700 transition-colors">
                     <ArrowLeft className="h-5 w-5"/>
                 </button>
             )}
@@ -399,15 +359,15 @@ ${selectedApp.pensionerName}
         </div>
         <button
           onClick={() => setShowNewForm(true)}
-          className="w-full sm:w-auto inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+          className="btn-primary-standard sm:w-auto w-full"
         >
           <Plus className="h-4 w-4 mr-2" />
           Create New Certificate
         </button>
       </div>
 
-      <div className="mb-6 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700/50 text-blue-800 dark:text-blue-300 px-4 py-3 rounded-lg flex items-start">
-        <Info className="h-5 w-5 mr-3 mt-0.5 flex-shrink-0 text-blue-600 dark:text-blue-400" />
+      <div className="mb-6 bg-primary-soft dark:bg-primary/20 border border-primary/20 dark:border-primary/40 text-primary dark:text-accent px-4 py-3 rounded-lg flex items-start">
+        <Info className="h-5 w-5 mr-3 mt-0.5 flex-shrink-0 text-primary dark:text-accent" />
         <div>
           <p className="text-sm font-medium">Important Information from SPARSH</p>
           <p className="text-xs mt-1">
@@ -431,7 +391,7 @@ ${selectedApp.pensionerName}
                 <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 mb-6">You haven't submitted any life certificates yet.</p>
                 <button
                     onClick={() => setShowNewForm(true)}
-                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-primary bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/50 dark:text-blue-300 dark:hover:bg-blue-900"
+                    className="btn-secondary-standard"
                 >
                     Get Started
                 </button>
@@ -444,7 +404,7 @@ ${selectedApp.pensionerName}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-0">
                         <div className="flex items-center justify-between sm:justify-start">
                             <div className="flex items-center">
-                                <span className="h-10 w-10 rounded bg-blue-50 dark:bg-gray-700 flex items-center justify-center text-primary dark:text-blue-300 font-bold text-xs mr-3">
+                                <span className="h-10 w-10 rounded bg-primary-soft dark:bg-gray-700 flex items-center justify-center text-primary dark:text-accent font-bold text-xs mr-3">
                                     {new Date(app.submittedDate).getFullYear()}
                                 </span>
                                 <div>
@@ -460,7 +420,7 @@ ${selectedApp.pensionerName}
                              <StatusBadge status={app.status} />
                              <button 
                                 onClick={() => setSelectedApp(app)}
-                                className="text-sm text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 font-medium flex items-center"
+                                className="text-sm text-primary hover:text-primary-dark dark:text-accent dark:hover:text-white font-medium flex items-center transition-colors"
                              >
                                 View History <ArrowLeft className="h-4 w-4 ml-1 rotate-180" />
                              </button>

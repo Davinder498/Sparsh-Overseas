@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { User } from '../types';
 import { sendGmailWithAttachments } from '../services/gmailService';
@@ -90,10 +91,8 @@ ${user.name}
     }
   };
   
-  const readOnlyClass = "mt-1 block w-full rounded-md border-gray-200 dark:border-gray-700 shadow-sm border p-2 bg-gray-100 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 cursor-not-allowed";
-
   return (
-    <div className="bg-white dark:bg-gray-800 shadow rounded-lg max-w-2xl mx-auto w-full border dark:border-gray-700">
+    <div className="bg-white dark:bg-gray-800 shadow rounded-lg max-w-2xl mx-auto w-full border dark:border-gray-700 overflow-hidden">
       <SparshSubmissionModal
         isOpen={showSparshModal}
         onClose={() => setShowSparshModal(false)}
@@ -104,55 +103,60 @@ ${user.name}
         submissionStatus={submissionStatus}
         errorMessage={errorMessage}
       />
-      <div className="px-4 py-5 border-b border-gray-200 dark:border-gray-700 sm:px-6 flex justify-between items-center sticky top-0 bg-white dark:bg-gray-800 z-10 rounded-t-lg">
+      <div className="px-6 py-5 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50/50 dark:bg-gray-900/50">
          <div className="flex items-center">
-            <button onClick={onBack} className="mr-4 text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white p-2 -ml-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">
+            <button onClick={onBack} className="mr-4 text-gray-500 hover:text-gray-900 dark:hover:text-white p-2 -ml-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
                 <ArrowLeft className="h-5 w-5"/>
             </button>
-            <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">
               Request Documents
             </h3>
         </div>
       </div>
       
-      <form onSubmit={(e) => { e.preventDefault(); setShowSparshModal(true); }} className="px-4 py-5 sm:p-6 space-y-8">
-        
+      <form onSubmit={(e) => { e.preventDefault(); setShowSparshModal(true); }} className="px-8 py-8 space-y-10 text-left">
         <div className="space-y-4">
-            <h4 className="text-base font-bold text-primary uppercase border-b dark:border-gray-700 pb-2 flex items-center"><span className="bg-primary text-white rounded-full w-6 h-6 flex items-center justify-center text-xs mr-2">1</span>Your Details</h4>
+            <h4 className="text-sm font-black text-primary uppercase tracking-widest flex items-center">
+                <span className="bg-primary/10 text-primary rounded-lg w-8 h-8 flex items-center justify-center mr-3">01</span>
+                Account Details
+            </h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="md:col-span-2"><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Full Name</label><input type="text" readOnly value={user.name} className={readOnlyClass} /></div>
-                <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">PPO Number</label><input type="text" readOnly value={user.ppoNumber} className={readOnlyClass} /></div>
-                <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Service Number</label><input type="text" readOnly value={user.serviceNumber} className={readOnlyClass} /></div>
+                <div className="md:col-span-2"><label className="form-label-standard">Full Name</label><input type="text" readOnly value={user.name} className="form-input-standard bg-gray-50 cursor-not-allowed" /></div>
+                <div><label className="form-label-standard">PPO Number</label><input type="text" readOnly value={user.ppoNumber} className="form-input-standard bg-gray-50 cursor-not-allowed" /></div>
+                <div><label className="form-label-standard">Service Number</label><input type="text" readOnly value={user.serviceNumber} className="form-input-standard bg-gray-50 cursor-not-allowed" /></div>
             </div>
         </div>
 
         <div className="space-y-4">
-            <h4 className="text-base font-bold text-primary uppercase border-b dark:border-gray-700 pb-2 flex items-center"><span className="bg-primary text-white rounded-full w-6 h-6 flex items-center justify-center text-xs mr-2">2</span>Select Documents to Request</h4>
-            <div className="bg-gray-50 dark:bg-gray-900/50 p-6 rounded-lg border border-gray-200 dark:border-gray-700 space-y-4">
-                <div className="relative flex items-start">
+            <h4 className="text-sm font-black text-primary uppercase tracking-widest flex items-center">
+                <span className="bg-primary/10 text-primary rounded-lg w-8 h-8 flex items-center justify-center mr-3">02</span>
+                Requested Records
+            </h4>
+            <div className="bg-gray-50 dark:bg-gray-950 p-6 rounded-2xl border border-gray-200 dark:border-gray-800 space-y-6">
+                <div className="relative flex items-start group">
                     <div className="flex items-center h-5">
-                        <input id="form16" name="form16" type="checkbox" checked={requestedDocs.form16} onChange={handleCheckboxChange} className="focus:ring-primary h-4 w-4 text-primary border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700" />
+                        <input id="form16" name="form16" type="checkbox" checked={requestedDocs.form16} onChange={handleCheckboxChange} className="h-5 w-5 text-primary border-gray-300 rounded-lg focus:ring-primary" />
                     </div>
-                    <div className="ml-3 text-sm">
-                        <label htmlFor="form16" className="font-medium text-gray-700 dark:text-gray-200">Form-16 / Statement of Accounts</label>
-                        <p className="text-gray-500 dark:text-gray-400">Request your annual tax deduction statement.</p>
+                    <div className="ml-4">
+                        <label htmlFor="form16" className="text-sm font-bold text-gray-700 dark:text-gray-200 group-hover:text-primary transition-colors cursor-pointer">Form-16 / Tax Statement</label>
+                        <p className="text-xs text-gray-500 mt-0.5">Annual tax deduction summary from the Defence Accounts Department.</p>
                     </div>
                 </div>
-                <div className="relative flex items-start">
+                <div className="relative flex items-start group">
                     <div className="flex items-center h-5">
-                        <input id="ppoCopy" name="ppoCopy" type="checkbox" checked={requestedDocs.ppoCopy} onChange={handleCheckboxChange} className="focus:ring-primary h-4 w-4 text-primary border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700" />
+                        <input id="ppoCopy" name="ppoCopy" type="checkbox" checked={requestedDocs.ppoCopy} onChange={handleCheckboxChange} className="h-5 w-5 text-primary border-gray-300 rounded-lg focus:ring-primary" />
                     </div>
-                    <div className="ml-3 text-sm">
-                        <label htmlFor="ppoCopy" className="font-medium text-gray-700 dark:text-gray-200">Copy of SPARSH PPO</label>
-                        <p className="text-gray-500 dark:text-gray-400">Request a digital copy of your Pension Payment Order for your records.</p>
+                    <div className="ml-4">
+                        <label htmlFor="ppoCopy" className="text-sm font-bold text-gray-700 dark:text-gray-200 group-hover:text-primary transition-colors cursor-pointer">Official PPO Copy</label>
+                        <p className="text-xs text-gray-500 mt-0.5">A certified digital copy of your Pension Payment Order.</p>
                     </div>
                 </div>
             </div>
         </div>
         
-        <div className="pt-5 border-t border-gray-200 dark:border-gray-700 flex flex-col-reverse sm:flex-row sm:justify-end gap-3 sm:gap-0">
-          <button type="button" onClick={onBack} className="w-full sm:w-auto bg-white dark:bg-gray-700 py-2 px-4 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none sm:mr-3">Cancel</button>
-          <button type="submit" disabled={!isFormReady} className="w-full sm:w-auto inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary hover:bg-blue-800 focus:outline-none disabled:opacity-50"><Send className="h-4 w-4 mr-2" />Submit Request to SPARSH</button>
+        <div className="pt-8 border-t border-gray-100 dark:border-gray-800 flex justify-end items-center space-x-4">
+          <button type="button" onClick={onBack} className="px-6 py-2.5 text-sm font-bold text-gray-500 hover:text-gray-700 transition-all">Cancel</button>
+          <button type="submit" disabled={!isFormReady} className="btn-primary-standard px-10"><Send className="h-4 w-4 mr-2" />Submit Request</button>
         </div>
       </form>
     </div>

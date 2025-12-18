@@ -194,10 +194,8 @@ ${formData.reporterName}
     }
   };
   
-  const inputClass = "mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-primary focus:ring-primary text-base md:text-sm border p-2 bg-white dark:bg-gray-700 text-black dark:text-white";
-
   return (
-    <div className="bg-white dark:bg-gray-800 shadow rounded-lg max-w-4xl mx-auto w-full border dark:border-gray-700">
+    <div className="bg-white dark:bg-gray-800 shadow rounded-lg max-w-4xl mx-auto w-full border dark:border-gray-700 overflow-hidden">
        <SparshSubmissionModal 
             isOpen={showSparshModal}
             onClose={() => setShowSparshModal(false)}
@@ -208,102 +206,113 @@ ${formData.reporterName}
             submissionStatus={submissionStatus}
             errorMessage={errorMessage}
        />
-      <div className="px-4 py-5 border-b border-gray-200 dark:border-gray-700 sm:px-6 flex justify-between items-center sticky top-0 bg-white dark:bg-gray-800 z-10 rounded-t-lg">
+      <div className="px-6 py-5 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50/50 dark:bg-gray-900/50">
          <div className="flex items-center">
-            <button onClick={onBack} className="mr-4 text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white p-2 -ml-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">
+            <button onClick={onBack} className="mr-4 text-gray-500 hover:text-gray-900 dark:hover:text-white p-2 -ml-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
                 <ArrowLeft className="h-5 w-5"/>
             </button>
-            <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">
               Initiate Family Pension
             </h3>
         </div>
       </div>
       
-      <form onSubmit={(e) => { e.preventDefault(); if(!hasConsented) { notifier.addToast("Please agree to the privacy policy.", "warning"); return; } setShowSparshModal(true); }} className="px-4 py-5 sm:p-6 space-y-8">
-        <div className="space-y-4">
-            <h4 className="text-base font-bold text-primary uppercase border-b dark:border-gray-700 pb-2 flex items-center"><span className="bg-primary text-white rounded-full w-6 h-6 flex items-center justify-center text-xs mr-2">1</span>Reporter Details</h4>
+      <form onSubmit={(e) => { e.preventDefault(); if(!hasConsented) { notifier.addToast("Please agree to the privacy policy.", "warning"); return; } setShowSparshModal(true); }} className="px-8 py-8 space-y-10">
+        <div className="space-y-6 text-left">
+            <h4 className="text-sm font-black text-primary uppercase tracking-widest flex items-center">
+                <span className="bg-primary/10 text-primary rounded-lg w-8 h-8 flex items-center justify-center mr-3">01</span>
+                Reporter Details
+            </h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Your Full Name</label><input type="text" name="reporterName" required value={formData.reporterName} onChange={handleInputChange} className={inputClass} /></div>
-                <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Relation to Deceased</label><input type="text" name="reporterRelation" required value={formData.reporterRelation} onChange={handleInputChange} className={inputClass} placeholder="e.g. Spouse, Son, Daughter" /></div>
+                <div><label className="form-label-standard">Your Full Name</label><input type="text" name="reporterName" required value={formData.reporterName} onChange={handleInputChange} className="form-input-standard" /></div>
+                <div><label className="form-label-standard">Relation to Deceased</label><input type="text" name="reporterRelation" required value={formData.reporterRelation} onChange={handleInputChange} className="form-input-standard" placeholder="e.g. Spouse, Son, Daughter" /></div>
             </div>
         </div>
-        <div className="space-y-4">
-            <h4 className="text-base font-bold text-primary uppercase border-b dark:border-gray-700 pb-2 flex items-center"><span className="bg-primary text-white rounded-full w-6 h-6 flex items-center justify-center text-xs mr-2">2</span>Deceased Pensioner Details</h4>
+
+        <div className="space-y-6 text-left">
+            <h4 className="text-sm font-black text-primary uppercase tracking-widest flex items-center">
+                <span className="bg-primary/10 text-primary rounded-lg w-8 h-8 flex items-center justify-center mr-3">02</span>
+                Deceased Pensioner Details
+            </h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Full Name</label><input type="text" name="deceasedName" required value={formData.deceasedName} onChange={handleInputChange} className={inputClass} /></div>
-                <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Rank</label><input type="text" name="deceasedRank" required value={formData.deceasedRank} onChange={handleInputChange} className={inputClass} /></div>
-                <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Service Number</label><input type="text" name="deceasedServiceNo" required value={formData.deceasedServiceNo} onChange={handleInputChange} className={inputClass} /></div>
-                <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">PPO Number (Sparsh)</label><input type="text" name="deceasedPpoNo" required value={formData.deceasedPpoNo} onChange={handleInputChange} className={inputClass} /></div>
-                <div className="md:col-span-2"><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Date of Death</label><input type="date" name="dateOfDeath" required value={formData.dateOfDeath} onChange={handleInputChange} className={inputClass} /></div>
+                <div><label className="form-label-standard">Full Name</label><input type="text" name="deceasedName" required value={formData.deceasedName} onChange={handleInputChange} className="form-input-standard" /></div>
+                <div><label className="form-label-standard">Rank</label><input type="text" name="deceasedRank" required value={formData.deceasedRank} onChange={handleInputChange} className="form-input-standard" /></div>
+                <div><label className="form-label-standard">Service Number</label><input type="text" name="deceasedServiceNo" required value={formData.deceasedServiceNo} onChange={handleInputChange} className="form-input-standard" /></div>
+                <div><label className="form-label-standard">PPO Number (Sparsh)</label><input type="text" name="deceasedPpoNo" required value={formData.deceasedPpoNo} onChange={handleInputChange} className="form-input-standard" /></div>
+                <div className="md:col-span-2"><label className="form-label-standard">Date of Death</label><input type="date" name="dateOfDeath" required value={formData.dateOfDeath} onChange={handleInputChange} className="form-input-standard" /></div>
             </div>
         </div>
-        <div className="space-y-4">
-            <h4 className="text-base font-bold text-primary uppercase border-b dark:border-gray-700 pb-2 flex items-center"><span className="bg-primary text-white rounded-full w-6 h-6 flex items-center justify-center text-xs mr-2">3</span>Claimant (Next of Kin - NoK) Details</h4>
+
+        <div className="space-y-6 text-left">
+            <h4 className="text-sm font-black text-primary uppercase tracking-widest flex items-center">
+                <span className="bg-primary/10 text-primary rounded-lg w-8 h-8 flex items-center justify-center mr-3">03</span>
+                Claimant (Next of Kin - NoK) Details
+            </h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Full Name</label><input type="text" name="claimantName" required value={formData.claimantName} onChange={handleInputChange} className={inputClass} /></div>
-                <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Relation to Pensioner</label><input type="text" name="claimantRelation" required value={formData.claimantRelation} onChange={handleInputChange} className={inputClass} /></div>
-                <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Date of Birth</label><input type="date" name="claimantDob" required value={formData.claimantDob} onChange={handleInputChange} className={inputClass} /></div>
-                <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Aadhaar / PAN (Optional)</label><input type="text" name="claimantAadhaarPan" value={formData.claimantAadhaarPan} onChange={handleInputChange} className={inputClass} /></div>
-                <div className="md:col-span-2"><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Indian Address (with Zip Code)</label><textarea name="claimantIndianAddress" rows={3} required value={formData.claimantIndianAddress} onChange={handleInputChange} className={inputClass} /></div>
-                <div className="md:col-span-2"><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Overseas Address (with Zip Code)</label><textarea name="claimantOverseasAddress" rows={3} required value={formData.claimantOverseasAddress} onChange={handleInputChange} className={inputClass} /></div>
-                <div className="md:col-span-2"><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Email for Notifications</label><input type="email" name="claimantEmail" required value={formData.claimantEmail} onChange={handleInputChange} className={inputClass} /></div>
-                <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Indian Phone No (Optional)</label><input type="tel" name="claimantPhone" value={formData.claimantPhone} onChange={handleInputChange} className={inputClass} /></div>
-                <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Overseas Phone No (Optional)</label><input type="tel" name="claimantOverseasPhone" value={formData.claimantOverseasPhone} onChange={handleInputChange} className={inputClass} /></div>
+                <div><label className="form-label-standard">Full Name</label><input type="text" name="claimantName" required value={formData.claimantName} onChange={handleInputChange} className="form-input-standard" /></div>
+                <div><label className="form-label-standard">Relation to Pensioner</label><input type="text" name="claimantRelation" required value={formData.claimantRelation} onChange={handleInputChange} className="form-input-standard" /></div>
+                <div><label className="form-label-standard">Date of Birth</label><input type="date" name="claimantDob" required value={formData.claimantDob} onChange={handleInputChange} className="form-input-standard" /></div>
+                <div><label className="form-label-standard">Aadhaar / PAN (Optional)</label><input type="text" name="claimantAadhaarPan" value={formData.claimantAadhaarPan} onChange={handleInputChange} className="form-input-standard" /></div>
+                <div className="md:col-span-2"><label className="form-label-standard">Indian Address</label><textarea name="claimantIndianAddress" rows={2} required value={formData.claimantIndianAddress} onChange={handleInputChange} className="form-input-standard" /></div>
+                <div className="md:col-span-2"><label className="form-label-standard">Overseas Address</label><textarea name="claimantOverseasAddress" rows={2} required value={formData.claimantOverseasAddress} onChange={handleInputChange} className="form-input-standard" /></div>
+                <div className="md:col-span-2"><label className="form-label-standard">Email for Notifications</label><input type="email" name="claimantEmail" required value={formData.claimantEmail} onChange={handleInputChange} className="form-input-standard" /></div>
             </div>
         </div>
-        <div className="space-y-4">
-            <h4 className="text-base font-bold text-primary uppercase border-b dark:border-gray-700 pb-2 flex items-center"><span className="bg-primary text-white rounded-full w-6 h-6 flex items-center justify-center text-xs mr-2">4</span>Claimant (NoK) Bank Details</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Bank Name</label><input type="text" name="bankName" required value={formData.bankName} onChange={handleInputChange} className={inputClass} /><p className="text-xs text-gray-500 mt-1">For NDG, only Nepal SBI & Everest Bank are accepted.</p></div>
-                <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Account Number</label><input type="text" name="bankAccountNo" required value={formData.bankAccountNo} onChange={handleInputChange} className={inputClass} /></div>
-                <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">IFSC Code</label><input type="text" name="bankIfsc" required value={formData.bankIfsc} onChange={handleInputChange} className={inputClass} /></div>
-                <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Account Type</label><select name="bankAccountType" value={formData.bankAccountType} onChange={handleInputChange} className={inputClass}><option>Savings</option><option>NRE</option><option>NRO</option></select></div>
-            </div>
-        </div>
-        <div className="space-y-4">
-             <h4 className="text-base font-bold text-primary uppercase border-b dark:border-gray-700 pb-2 flex items-center"><span className="bg-primary text-white rounded-full w-6 h-6 flex items-center justify-center text-xs mr-2">5</span>Required Documents (NoK)</h4>
-             <div className="bg-gray-50 dark:bg-gray-900/50 p-4 sm:p-6 rounded-lg border border-gray-200 dark:border-gray-700 space-y-4">
+
+        <div className="space-y-6 text-left">
+             <h4 className="text-sm font-black text-primary uppercase tracking-widest flex items-center">
+                <span className="bg-primary/10 text-primary rounded-lg w-8 h-8 flex items-center justify-center mr-3">04</span>
+                Supporting Documents (NoK)
+             </h4>
+             <div className="bg-gray-50 dark:bg-gray-950 p-6 rounded-2xl border border-gray-200 dark:border-gray-800 space-y-4">
                 <input type="file" ref={fileInputRef} className="hidden" accept="image/jpeg,image/png,image/jpg,application/pdf" onChange={handleFileChange}/>
-                {DOCUMENT_SLOTS.map(slot => {
-                    const doc = documents[slot.id];
-                    return (
-                        <div key={slot.id} className="bg-white dark:bg-gray-800 p-3 rounded-md border border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                            <div className="flex-1"><p className="text-sm font-semibold text-gray-800 dark:text-gray-200">{slot.label}</p>{slot.required && <span className="text-xs text-red-500 dark:text-red-400">Required</span>}</div>
-                            {doc ? (
-                                <div className="flex items-center space-x-3 w-full sm:w-auto"><div className="flex items-center space-x-2 flex-1 min-w-0 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded px-2 py-1"><CheckCircle className="w-4 h-4 flex-shrink-0" /><span className="text-xs font-medium truncate" title={doc.name}>{doc.name}</span></div><div className="flex items-center flex-shrink-0"><a href={doc.base64} target="_blank" rel="noreferrer" className="p-1.5 text-gray-500 hover:text-primary"><Eye className="w-4 h-4"/></a><button type="button" onClick={() => removeDocument(slot.id)} className="p-1.5 text-gray-500 hover:text-red-600"><Trash2 className="w-4 h-4"/></button></div></div>
-                            ) : (
-                                <button type="button" onClick={() => handleUploadClick(slot.id)} className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 border border-dashed border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"><Upload className="h-4 w-4 mr-2" />Upload</button>
-                            )}
-                        </div>
-                    )
-                })}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {DOCUMENT_SLOTS.map(slot => {
+                        const doc = documents[slot.id];
+                        return (
+                            <div key={slot.id} className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-100 dark:border-gray-800 flex items-center justify-between transition-all hover:border-primary/30">
+                                <div className="flex-1 min-w-0 mr-3">
+                                    <p className="text-sm font-bold text-gray-800 dark:text-gray-200 truncate">{slot.label}</p>
+                                    <span className={`text-[10px] font-bold ${slot.required ? 'text-red-500' : 'text-gray-400'}`}>{slot.required ? 'REQUIRED' : 'OPTIONAL'}</span>
+                                </div>
+                                {doc ? (
+                                    <div className="flex items-center space-x-2">
+                                        <div className="bg-green-50 dark:bg-green-900/20 text-green-600 rounded-lg p-1.5"><CheckCircle className="w-5 h-5" /></div>
+                                        <button type="button" onClick={() => removeDocument(slot.id)} className="p-1.5 text-gray-400 hover:text-red-500 transition-colors"><Trash2 className="w-4 h-4"/></button>
+                                    </div>
+                                ) : (
+                                    <button type="button" onClick={() => handleUploadClick(slot.id)} className="p-2 bg-primary-soft dark:bg-primary/20 text-primary rounded-lg hover:bg-primary/20 transition-all"><Upload className="h-5 w-5" /></button>
+                                )}
+                            </div>
+                        )
+                    })}
+                </div>
              </div>
         </div>
 
-        {/* CONSENT CHECKBOX */}
-        <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-100 dark:border-blue-800">
+        <div className="bg-primary/5 dark:bg-primary/10 p-5 rounded-2xl border border-primary/10 text-left">
             <div className="flex items-start">
-                <div className="flex items-center h-5">
+                <div className="flex items-center h-5 mt-1">
                     <input
                         id="privacy-consent"
                         name="privacy-consent"
                         type="checkbox"
                         checked={hasConsented}
                         onChange={(e) => setHasConsented(e.target.checked)}
-                        className="focus:ring-primary h-4 w-4 text-primary border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700"
+                        className="h-5 w-5 text-primary border-gray-300 rounded-lg focus:ring-primary"
                     />
                 </div>
-                <div className="ml-3 text-sm">
-                    <label htmlFor="privacy-consent" className="font-medium text-gray-700 dark:text-gray-300">
-                        I consent to the collection and processing of my personal data (including sensitive financial information) as described in the Privacy Policy. I verify that I am the legal reporter/Next of Kin.
+                <div className="ml-4">
+                    <label htmlFor="privacy-consent" className="text-sm font-medium text-gray-700 dark:text-gray-300 leading-relaxed">
+                        I verify that I am the legal Next of Kin/Reporter and authorize the processing of this claim.
                     </label>
                 </div>
             </div>
         </div>
         
-        <div className="pt-5 border-t border-gray-200 dark:border-gray-700 flex flex-col-reverse sm:flex-row sm:justify-end gap-3 sm:gap-0">
-          <button type="button" onClick={onBack} className="w-full sm:w-auto bg-white dark:bg-gray-700 py-2 px-4 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none sm:mr-3">Cancel</button>
-          <button type="submit" disabled={!isFormReady} className="w-full sm:w-auto inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary hover:bg-blue-800 focus:outline-none disabled:opacity-50"><Send className="h-4 w-4 mr-2" />Submit to SPARSH</button>
+        <div className="pt-8 border-t border-gray-100 dark:border-gray-800 flex justify-end items-center space-x-4">
+          <button type="button" onClick={onBack} className="px-6 py-2.5 text-sm font-bold text-gray-500 hover:text-gray-700 transition-all">Cancel</button>
+          <button type="submit" disabled={!isFormReady} className="btn-primary-standard px-10"><Send className="h-4 w-4 mr-2" />Submit to SPARSH</button>
         </div>
       </form>
     </div>

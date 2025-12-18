@@ -1,6 +1,5 @@
 
-import { db } from './firebaseConfig';
-import { captureError } from './errorMonitoringService';
+import { db, auth } from './firebaseConfig';
 
 export enum AuditAction {
     LOGIN = 'LOGIN',
@@ -17,36 +16,40 @@ export enum AuditAction {
 interface AuditLogEntry {
     userId: string;
     action: AuditAction;
-    resourceId?: string; // e.g., Application ID
+    resourceId?: string | null;
     details?: string;
-    timestamp: string; // ISO String
+    timestamp: string;
     userAgent: string;
 }
 
 /**
- * Logs a critical user action to the immutable audit_logs collection.
- * This provides a legal trail of who did what and when.
+ * Logs an action to the Firestore audit_logs collection.
+ * Note: The collection is created automatically by Firestore on the first write.
  */
 export const logAudit = async (userId: string, action: AuditAction, resourceId?: string, details?: string) => {
     try {
+        // Use provided userId, but fallback to auth current user if available
+        const effectiveUid = userId || auth.currentUser?.uid;
+
+        if (!effectiveUid) {
+            console.warn("[Audit Service] Skipping log: No userId available for action", action);
+            return;
+        }
+
         const entry: AuditLogEntry = {
-            userId,
+            userId: effectiveUid,
             action,
-            resourceId,
+            resourceId: resourceId ?? null,
             details: details || '',
             timestamp: new Date().toISOString(),
             userAgent: navigator.userAgent
         };
 
-        // Fire and forget - we don't want audit logging to block the UI
-        db.collection('audit_logs').add(entry).catch(err => {
-            console.error("Failed to write audit log", err);
-            // In a real production app, we might send this failure to Sentry
-            // because missing audit logs is a compliance risk.
-            captureError(err, { context: 'Audit Log Failure', entry });
-        });
+        // This will trigger the automatic creation of the 'audit_logs' collection
+        await db.collection('audit_logs').add(entry);
 
-    } catch (error) {
-        console.error("Audit Service Error", error);
+    } catch (error: any) {
+        // We log to console but don't break the app flow if auditing fails
+        console.error("[Audit Service] Critical failure writing to audit_logs:", error.message);
     }
 };

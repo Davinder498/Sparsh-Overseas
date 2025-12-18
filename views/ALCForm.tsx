@@ -3,7 +3,7 @@ import React, { useState, useRef } from 'react';
 import { User, ALCDocument } from '../types';
 import { createApplication } from '../services/firebaseBackend';
 import SignaturePad from '../components/SignaturePad';
-import { Camera, Sparkles, Loader2, Save, X, FileText, Upload, Trash2, Eye, AlertCircle, CheckCircle, ShieldCheck } from 'lucide-react';
+import { Loader2, Save, X, Upload, Trash2, CheckCircle } from 'lucide-react';
 import { useNotifier } from '../contexts/NotificationContext';
 
 interface Props {
@@ -18,6 +18,17 @@ const DOCUMENT_SLOTS = [
     { id: 'canadian_id', label: 'Canadian ID (Optional)', required: false },
     { id: 'other', label: 'Other (Optional)', required: false },
 ];
+
+const generateDocID = (): string => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let result = '';
+  const randomValues = new Uint32Array(8);
+  window.crypto.getRandomValues(randomValues);
+  for (let i = 0; i < 8; i++) {
+    result += chars[randomValues[i] % chars.length];
+  }
+  return result;
+};
 
 export default function ALCForm({ user, onCancel, onSuccess }: Props) {
   const [formData, setFormData] = useState({
@@ -68,7 +79,7 @@ export default function ALCForm({ user, onCancel, onSuccess }: Props) {
     reader.onloadend = () => {
       const base64 = reader.result as string;
       const newDoc: ALCDocument = {
-        id: `doc-${docType}-${Date.now()}`,
+        id: `DOC-${generateDocID()}`,
         name: file.name,
         url: base64,
         type: file.type,
@@ -134,194 +145,130 @@ export default function ALCForm({ user, onCancel, onSuccess }: Props) {
         notifier.addToast('Certificate submitted to notary successfully!', 'success');
         onSuccess();
     } catch (err: any) {
-        let msg = "Submission failed. Please check your connection.";
-        
-        if (err.code === 'storage/unauthorized') {
-            msg = "Permission Denied: Cannot upload files. Please check Storage Rules.";
-        } else if (err.code === 'storage/retry-limit-exceeded') {
-            msg = "Upload Failed: Network unstable or file too large.";
-        } else if (err.message) {
-            msg = err.message;
-        }
-        
-        notifier.addToast(msg, 'error');
+        notifier.addToast(err.message || 'Submission failed.', 'error');
     } finally {
         setIsSubmitting(false);
     }
   };
   
-  const requiredDocsUploaded = DOCUMENT_SLOTS.every(slot => !slot.required || !!documents[slot.id]);
-  const isFormReady = requiredDocsUploaded && !!signature && hasConsented;
-
-  const inputClass = "mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-primary focus:ring-primary text-base md:text-sm border p-2 bg-white dark:bg-gray-700 text-black dark:text-white";
+  const isFormReady = DOCUMENT_SLOTS.every(slot => !slot.required || !!documents[slot.id]) && !!signature && hasConsented;
 
   return (
-    <div className="bg-white dark:bg-gray-800 shadow rounded-lg max-w-4xl mx-auto w-full border dark:border-gray-700">
-      <div className="px-4 py-5 border-b border-gray-200 dark:border-gray-700 sm:px-6 flex justify-between items-center sticky top-0 bg-white dark:bg-gray-800 z-10 rounded-t-lg">
-        <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100 truncate pr-4">
-          New Annual Life Certificate
+    <div className="bg-white dark:bg-gray-900 shadow-sm rounded-2xl max-w-4xl mx-auto w-full border border-gray-200 dark:border-gray-800">
+      <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-white dark:bg-gray-900 rounded-t-2xl">
+        <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">
+          Annual Life Certificate Application
         </h3>
-        <button onClick={onCancel} className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 p-1">
+        <button onClick={onCancel} className="text-gray-400 hover:text-red-500 transition-colors p-2">
             <X className="h-6 w-6" />
         </button>
       </div>
       
-      <form onSubmit={handleSubmit} className="px-4 py-5 sm:p-6 space-y-8">
+      <form onSubmit={handleSubmit} className="px-8 py-8 space-y-10">
         
-        <div className="space-y-4">
-            <h4 className="text-base font-bold text-primary uppercase border-b dark:border-gray-700 pb-2 flex items-center">
-                <span className="bg-primary text-white rounded-full w-6 h-6 flex items-center justify-center text-xs mr-2 flex-shrink-0">1</span>
-                Personal Details
+        {/* Section 1 */}
+        <div className="space-y-6">
+            <h4 className="text-sm font-black text-primary uppercase tracking-widest flex items-center">
+                <span className="bg-primary/10 text-primary rounded-lg w-8 h-8 flex items-center justify-center mr-3">01</span>
+                Personal Particulars
             </h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Full Name</label>
-                    <input type="text" name="name" required value={formData.name} onChange={handleInputChange} className={inputClass} placeholder="e.g. Subedar Rajinder Singh" />
+                    <label className="form-label-standard">Full Name</label>
+                    <input type="text" name="name" required value={formData.name} onChange={handleInputChange} className="form-input-standard" placeholder="e.g. Subedar Rajinder Singh" />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Father/Husband Name</label>
-                    <input type="text" name="fatherHusbandName" value={formData.fatherHusbandName} onChange={handleInputChange} className={inputClass} placeholder="e.g. Late Havaldar Harnam Singh" />
+                    <label className="form-label-standard">Father/Husband Name</label>
+                    <input type="text" name="fatherHusbandName" value={formData.fatherHusbandName} onChange={handleInputChange} className="form-input-standard" placeholder="e.g. Late Havaldar Harnam Singh" />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Date of Birth</label>
-                    <input type="date" name="dob" required value={formData.dob} onChange={handleInputChange} className={inputClass} />
+                    <label className="form-label-standard">Date of Birth</label>
+                    <input type="date" name="dob" required value={formData.dob} onChange={handleInputChange} className="form-input-standard" />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Place of Birth</label>
-                    <input type="text" name="placeOfBirth" value={formData.placeOfBirth} onChange={handleInputChange} className={inputClass} placeholder="e.g. Jalandhar, Punjab" />
+                    <label className="form-label-standard">Place of Birth</label>
+                    <input type="text" name="placeOfBirth" value={formData.placeOfBirth} onChange={handleInputChange} className="form-input-standard" placeholder="e.g. Jalandhar, Punjab" />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nationality</label>
-                    <input type="text" name="nationality" value={formData.nationality} onChange={handleInputChange} className={inputClass} placeholder="e.g. Indian" />
+                    <label className="form-label-standard">Nationality</label>
+                    <input type="text" name="nationality" value={formData.nationality} onChange={handleInputChange} className="form-input-standard" placeholder="e.g. Indian" />
                 </div>
             </div>
         </div>
 
-        <div className="space-y-4">
-             <h4 className="text-base font-bold text-primary uppercase border-b dark:border-gray-700 pb-2 flex items-center">
-                <span className="bg-primary text-white rounded-full w-6 h-6 flex items-center justify-center text-xs mr-2 flex-shrink-0">2</span>
-                Contact Details
+        {/* Section 2 */}
+        <div className="space-y-6">
+             <h4 className="text-sm font-black text-primary uppercase tracking-widest flex items-center">
+                <span className="bg-primary/10 text-primary rounded-lg w-8 h-8 flex items-center justify-center mr-3">02</span>
+                Communication Details
              </h4>
              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Email Address</label>
-                    <input type="email" name="email" value={formData.email} onChange={handleInputChange} className={inputClass} placeholder="e.g. rajinder@example.com" />
+                    <label className="form-label-standard">Email Address</label>
+                    <input type="email" name="email" value={formData.email} onChange={handleInputChange} className="form-input-standard" placeholder="e.g. rajinder@example.com" />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Overseas Address</label>
-                    <textarea name="overseasAddress" rows={3} value={formData.overseasAddress} onChange={handleInputChange} className={inputClass} placeholder="Enter your current residential address abroad" />
+                    <label className="form-label-standard">Overseas Residence</label>
+                    <textarea name="overseasAddress" rows={3} value={formData.overseasAddress} onChange={handleInputChange} className="form-input-standard" placeholder="Full residential address abroad" />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Indian Address</label>
-                    <textarea name="indianAddress" rows={3} value={formData.indianAddress} onChange={handleInputChange} className={inputClass} placeholder="Enter your permanent address in India" />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Phone No (Overseas)</label>
-                    <input type="tel" name="phoneNumber" value={formData.phoneNumber} onChange={handleInputChange} className={inputClass} placeholder="e.g. +44 7700 900000" />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Indian Phone No</label>
-                    <input type="tel" name="indianPhoneNumber" value={formData.indianPhoneNumber} onChange={handleInputChange} className={inputClass} placeholder="e.g. +91 98765 43210" />
+                    <label className="form-label-standard">Indian Permanent Address</label>
+                    <textarea name="indianAddress" rows={3} value={formData.indianAddress} onChange={handleInputChange} className="form-input-standard" placeholder="Permanent address in India" />
                 </div>
              </div>
         </div>
 
-        <div className="space-y-4">
-            <h4 className="text-base font-bold text-primary uppercase border-b dark:border-gray-700 pb-2 flex items-center">
-                <span className="bg-primary text-white rounded-full w-6 h-6 flex items-center justify-center text-xs mr-2 flex-shrink-0">3</span>
-                Service Details
+        {/* Section 3 */}
+        <div className="space-y-6">
+            <h4 className="text-sm font-black text-primary uppercase tracking-widest flex items-center">
+                <span className="bg-primary/10 text-primary rounded-lg w-8 h-8 flex items-center justify-center mr-3">03</span>
+                Service Records
             </h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Service Number</label>
-                    <input type="text" name="serviceNumber" required value={formData.serviceNumber} onChange={handleInputChange} className={inputClass} placeholder="e.g. 12345678X" />
+                    <label className="form-label-standard">Service Number</label>
+                    <input type="text" name="serviceNumber" required value={formData.serviceNumber} onChange={handleInputChange} className="form-input-standard" />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Rank</label>
-                    <input type="text" name="rank" value={formData.rank} onChange={handleInputChange} className={inputClass} placeholder="e.g. Subedar" />
+                    <label className="form-label-standard">Rank</label>
+                    <input type="text" name="rank" value={formData.rank} onChange={handleInputChange} className="form-input-standard" />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">PPO Number</label>
-                    <input type="text" name="ppoNumber" required value={formData.ppoNumber} onChange={handleInputChange} className={inputClass} placeholder="e.g. PPO-2023-998877" />
+                    <label className="form-label-standard">SPARSH PPO No.</label>
+                    <input type="text" name="ppoNumber" required value={formData.ppoNumber} onChange={handleInputChange} className="form-input-standard" />
                 </div>
             </div>
         </div>
 
-        <div className="space-y-4">
-             <h4 className="text-base font-bold text-primary uppercase border-b dark:border-gray-700 pb-2 flex items-center">
-                <span className="bg-primary text-white rounded-full w-6 h-6 flex items-center justify-center text-xs mr-2 flex-shrink-0">4</span>
-                Passport Details
-             </h4>
-             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="md:col-span-2 lg:col-span-1">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Passport No</label>
-                    <input type="text" name="passportNumber" value={formData.passportNumber} onChange={handleInputChange} className={inputClass} placeholder="e.g. Z1234567" />
-                </div>
-                <div className="md:col-span-2 lg:col-span-1">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Issuing Authority</label>
-                    <input type="text" name="passportAuthority" value={formData.passportAuthority} onChange={handleInputChange} className={inputClass} placeholder="e.g. CGI London" />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Issue Date</label>
-                    <input type="date" name="passportIssueDate" value={formData.passportIssueDate} onChange={handleInputChange} className={inputClass} />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Expiry Date</label>
-                    <input type="date" name="passportExpiryDate" value={formData.passportExpiryDate} onChange={handleInputChange} className={inputClass} />
-                </div>
-             </div>
-        </div>
-
+        {/* Section 4 */}
         <div className="space-y-6">
-            <h4 className="text-base font-bold text-primary uppercase border-b dark:border-gray-700 pb-2 flex items-center">
-                <span className="bg-primary text-white rounded-full w-6 h-6 flex items-center justify-center text-xs mr-2 flex-shrink-0">5</span>
-                Documents & Declaration
+            <h4 className="text-sm font-black text-primary uppercase tracking-widest flex items-center">
+                <span className="bg-primary/10 text-primary rounded-lg w-8 h-8 flex items-center justify-center mr-3">04</span>
+                Evidence & Attestation
             </h4>
             
-            <div className="bg-gray-50 dark:bg-gray-900/50 p-4 sm:p-6 rounded-lg border border-gray-200 dark:border-gray-700">
+            <div className="bg-gray-50 dark:bg-gray-950 p-6 rounded-2xl border border-gray-100 dark:border-gray-800">
                 <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Upload ID Proofs</label>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                        Upload clear images or PDFs for each required document.
-                    </p>
-                    <input 
-                        type="file" 
-                        ref={fileInputRef} 
-                        className="hidden" 
-                        accept="image/jpeg,image/png,image/jpg,application/pdf" 
-                        onChange={handleFileChange}
-                    />
+                    <label className="form-label-standard mb-3">Upload Supporting Documents</label>
+                    <input type="file" ref={fileInputRef} className="hidden" accept="image/jpeg,image/png,image/jpg,application/pdf" onChange={handleFileChange} />
                 </div>
 
-                <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {DOCUMENT_SLOTS.map(slot => {
                         const doc = documents[slot.id];
                         return (
-                            <div key={slot.id} className="bg-white dark:bg-gray-800 p-3 rounded-md border border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
-                                <div className="flex-1">
-                                    <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">{slot.label}</p>
-                                    {slot.required && <span className="text-xs text-red-500 dark:text-red-400">Required</span>}
+                            <div key={slot.id} className="bg-white dark:bg-gray-900 p-4 rounded-xl border border-gray-100 dark:border-gray-800 flex items-center justify-between transition-all hover:border-primary/30">
+                                <div className="flex-1 min-w-0 mr-3">
+                                    <p className="text-sm font-bold text-gray-800 dark:text-gray-200 truncate">{slot.label}</p>
+                                    <span className={`text-[10px] font-bold ${slot.required ? 'text-red-500' : 'text-gray-400'}`}>{slot.required ? 'REQUIRED' : 'OPTIONAL'}</span>
                                 </div>
                                 {doc ? (
-                                    <div className="flex items-center space-x-3 w-full sm:w-auto">
-                                        <div className="flex items-center space-x-2 flex-1 min-w-0 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded px-2 py-1">
-                                            <CheckCircle className="w-4 h-4 flex-shrink-0" />
-                                            <span className="text-xs font-medium truncate" title={doc.name}>{doc.name}</span>
-                                        </div>
-                                        <div className="flex items-center flex-shrink-0">
-                                            <a href={doc.url} target="_blank" rel="noreferrer" className="p-1.5 text-gray-500 hover:text-primary dark:hover:text-blue-400"><Eye className="w-4 h-4"/></a>
-                                            <button type="button" onClick={() => removeDocument(slot.id)} className="p-1.5 text-gray-500 hover:text-red-600 dark:hover:text-red-400"><Trash2 className="w-4 h-4"/></button>
-                                        </div>
+                                    <div className="flex items-center space-x-2">
+                                        <div className="bg-green-50 dark:bg-green-900/20 text-green-600 rounded-lg p-1.5"><CheckCircle className="w-5 h-5" /></div>
+                                        <button type="button" onClick={() => removeDocument(slot.id)} className="p-1.5 text-gray-400 hover:text-red-500 transition-colors"><Trash2 className="w-4 h-4"/></button>
                                     </div>
                                 ) : (
-                                    <button
-                                        type="button"
-                                        onClick={() => handleUploadClick(slot.id)}
-                                        className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 border border-dashed border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none disabled:opacity-50"
-                                    >
-                                        <Upload className="h-4 w-4 mr-2" />
-                                        Upload
-                                    </button>
+                                    <button type="button" onClick={() => handleUploadClick(slot.id)} className="p-2 bg-primary-soft dark:bg-primary/20 text-primary rounded-lg hover:bg-primary/20 transition-all"><Upload className="h-5 w-5" /></button>
                                 )}
                             </div>
                         )
@@ -330,56 +277,41 @@ export default function ALCForm({ user, onCancel, onSuccess }: Props) {
             </div>
 
             <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Digital Signature</label>
-                <SignaturePad onSave={setSignature} label="Sign below to declare truthfulness" />
+                <label className="form-label-standard">Applicant's Signature</label>
+                <div className="rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-800">
+                  <SignaturePad onSave={setSignature} label="Please sign within the box" />
+                </div>
             </div>
 
-            {/* PRIVACY ACT COMPLIANCE: EXPLICIT CONSENT */}
-            <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-100 dark:border-blue-800">
+            <div className="bg-primary/5 dark:bg-primary/10 p-5 rounded-2xl border border-primary/10">
                 <div className="flex items-start">
-                    <div className="flex items-center h-5">
+                    <div className="flex items-center h-5 mt-1">
                         <input
                             id="privacy-consent"
                             name="privacy-consent"
                             type="checkbox"
                             checked={hasConsented}
                             onChange={(e) => setHasConsented(e.target.checked)}
-                            className="focus:ring-primary h-4 w-4 text-primary border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700"
+                            className="h-5 w-5 text-primary border-gray-300 rounded-lg focus:ring-primary"
                         />
                     </div>
-                    <div className="ml-3 text-sm">
-                        <label htmlFor="privacy-consent" className="font-medium text-gray-700 dark:text-gray-300">
-                            I consent to the collection, processing, and transmission of my personal and biometric data to the Defence Accounts Department (SPARSH) as detailed in the <span className="text-primary font-bold">Privacy Policy</span>. I understand this data is required to process my Life Certificate.
+                    <div className="ml-4">
+                        <label htmlFor="privacy-consent" className="text-sm font-medium text-gray-700 dark:text-gray-300 leading-relaxed">
+                            I solemnly declare that the information provided is true and complete. I authorize the processing of my personal data for the purpose of Annual Identification under SPARSH.
                         </label>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div className="pt-5 border-t border-gray-200 dark:border-gray-700 flex flex-col-reverse sm:flex-row sm:justify-end gap-3 sm:gap-0">
-            <button
-                type="button"
-                onClick={onCancel}
-                className="w-full sm:w-auto bg-white dark:bg-gray-700 py-2 px-4 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary sm:mr-3"
-            >
-                Cancel
-            </button>
+        <div className="pt-8 border-t border-gray-100 dark:border-gray-800 flex justify-end items-center space-x-4">
+            <button type="button" onClick={onCancel} className="px-6 py-2.5 text-sm font-bold text-gray-500 hover:text-gray-700 transition-all">Cancel</button>
             <button
                 type="submit"
                 disabled={isSubmitting || !isFormReady}
-                className="w-full sm:w-auto inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50"
+                className="btn-primary-standard px-10"
             >
-                {isSubmitting ? (
-                    <>
-                        <Loader2 className="animate-spin h-4 w-4 mr-2" />
-                        Submitting...
-                    </>
-                ) : (
-                    <>
-                        <Save className="h-4 w-4 mr-2" />
-                        Submit to Notary
-                    </>
-                )}
+                {isSubmitting ? <><Loader2 className="animate-spin h-4 w-4 mr-2" /> Processing...</> : <><Save className="h-4 w-4 mr-2" /> Submit to Notary</>}
             </button>
         </div>
       </form>
